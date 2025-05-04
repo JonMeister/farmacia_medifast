@@ -1,4 +1,8 @@
+import { useNavigate } from "react-router-dom";
+
 export default function CajerosView() {
+  const navigate = useNavigate();
+
   const cajas = Array(6).fill({
     caja: "1", // Puedes poner el número dinámico
     cajero: "Nombre del cajero",
@@ -45,7 +49,9 @@ export default function CajerosView() {
 
         {/* Botón Añadir Caja */}
         <div className="flex justify-center">
-          <button className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition">
+          <button className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition"
+            onClick={()=> navigate("/añadirCaja")}
+            >
             Añadir Caja
           </button>
         </div>

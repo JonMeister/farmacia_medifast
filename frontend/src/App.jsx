@@ -8,6 +8,9 @@ import ClientManagement from "./pages/clienteManagement";
 import CajerosView from "./pages/cajerosView";
 import Resenas from "./pages/resenas";
 import Estadisticas from "./pages/estadisticas";
+import Turno from "./pages/turnos";
+import AñadirCaja from "./pages/añadirCaja";
+
 import Header  from "./components/Header";
 
 function App() { 
@@ -20,16 +23,18 @@ function App() {
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/clienteManagement" element={<ClientManagement />} />
+          <Route path="/clienteManagement" element={<ClientManagement/>} />
           <Route path="/servicios" element={<SelectorService />} />
           <Route path="/schedules" element={<ScheduleSelector />} />
           <Route path="/shift" element={<Shift />} />
           <Route path="/cajeros" element={<CajerosView />} />
           <Route path="/resenas" element={<Resenas />} />
           <Route path="/estadisticas" element={<Estadisticas />} />
+          <Route path="/turno" element={<Turno />} />
+          <Route path="/añadirCaja" element={<AñadirCaja />} />
         </Routes>
 
-        {      <footer className="bg-green-900 text-white py-3 mt-3">
+        {<footer className="bg-green-900 text-white py-3 mt-3">
         <div className="max-w-5xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center">
           {/* Sección de enlaces */}
           <div className="mb-4 md:mb-0">

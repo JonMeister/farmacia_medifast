@@ -1,6 +1,7 @@
 import Button from "../components/Button";
-
+import { useNavigate } from "react-router-dom";
 export default function ServicioEditor() {
+  const navigate = useNavigate();
   const servicios = [
     "Servicio 1",
     "Servicio 2",
@@ -20,9 +21,12 @@ export default function ServicioEditor() {
               key={index}
               className="flex flex-col items-center relative space-y-2"
             >
-              <Button className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg">
-                {servicio}
+              <Button className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg"
+                onClick={() => navigate("/schedules",{state: {servicio: servicio}})}
+                >
+                {servicio}             
               </Button>
+
               <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded-full">
                 Prioridad
               </span>

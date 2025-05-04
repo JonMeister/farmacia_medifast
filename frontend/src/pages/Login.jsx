@@ -28,7 +28,12 @@ export default function Login() {
           </div>
 
           {/* Form */}
-          <form className="space-y-4">
+          <form className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            navigate("/admin")
+          }}
+          >            
             <input
               type="email"
               placeholder="Email"
@@ -41,8 +46,8 @@ export default function Login() {
             />
 
             <button
+              type="submit"
               className="w-full bg-green-600 hover:bg-green-700 text-white text-white py-2 rounded-full transition"
-              onClick={() => navigate("/admin")}
             >
               Submit
             </button>
