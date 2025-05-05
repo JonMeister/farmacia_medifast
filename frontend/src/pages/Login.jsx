@@ -31,7 +31,7 @@ export default function Login() {
           <form className="space-y-4"
           onSubmit={(e) => {
             e.preventDefault();
-            navigate("/admin")
+            navigate("/turno")
           }}
           >            
             <input
