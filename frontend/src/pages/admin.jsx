@@ -5,6 +5,7 @@ import cajerosImg from "../assets/cajeros.png";
 import serviciosImg from "../assets/servicios.png";
 import usuariosImg from "../assets/ids.png";
 import resenasImg from "../assets/resenas.png";
+import UserList from "../components/UserList";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();

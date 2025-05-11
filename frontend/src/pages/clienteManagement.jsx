@@ -1,11 +1,6 @@
-export default function ClientManagement() {
-  
-  const clients = Array(10).fill({
-    nombre: "Nombre",
-    apellido: "Apellido",
-    identificacion: "Identificación",
-    prioridad: "Prioridad",
-  });
+export default function ClientManagement( {users} ) {
+  console.log(users)
+  const clients = Array.isArray(users) ? users : [];
 
   return (
     <main className="flex-1 p-8 flex gap-8">
@@ -34,13 +29,13 @@ export default function ClientManagement() {
           </thead>
           <tbody>
             {clients.map((client, index) => (
-              <tr key={index} className="border-b">
+              <tr key={client.id} className="border-b">
                 <td>
                   <input type="checkbox" />
                 </td>
-                <td>{client.nombre}</td>
-                <td>{client.apellido}</td>
-                <td>{client.identificacion}</td>
+                <td>{client.first_name}</td>
+                <td>{client.last_name}</td>
+                <td>{client.cc}</td>
                 <td>{client.prioridad}</td>
               </tr>
             ))}
