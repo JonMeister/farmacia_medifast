@@ -1,8 +1,39 @@
-import React from "react";
+import React, {useState}from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 export default function Login() {
+  const [cc, setCc] = useState("");
+  const [password, setPassword] = useState("");
+
   const navigate = useNavigate();
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+
+    try {
+      const response = await axios.post("http://127.0.0.1:8000/api/authtoken", {
+        cc: Number(cc),
+        password: password,
+      });
+
+      const {token,is_staff} = response.data;
+      localStorage.setItem("token", token);
+      localStorage.setItem("is_staff", is_staff)
+      
+      console.log(token)                   //Eliminar despues
+      console.log("Admin:", is_staff);     //Eliminar despues
+
+      if (is_staff){
+        navigate("/admin")
+      }else {navigate("/turno")}
+
+    } catch (error) {
+      alert("Error al iniciar sesión: " +
+        (error.response?.data?.non_field_errors?.[0] || "Credenciales inválidas"));
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Main content */}
@@ -29,19 +60,20 @@ export default function Login() {
 
           {/* Form */}
           <form className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            navigate("/turno")
-          }}
+          onSubmit={handleLogin}
           >            
             <input
-              type="email"
-              placeholder="Email"
+              type="number"
+              placeholder="Cedula De Ciudadania"
+              value = {cc}
+              onChange={(e) => setCc(e.target.value)}
               className="w-full px-4 py-2 border rounded-full focus:outline-none"
             />
             <input
               type="password"
               placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-2 border rounded-full focus:outline-none"
             />
 

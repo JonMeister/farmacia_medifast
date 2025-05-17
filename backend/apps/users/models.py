@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.validators import RegexValidator
 from django.contrib.auth.models import AbstractUser, Group, Permission
+from .manager import CustomUserManager
 
 class User(AbstractUser):
     phone_number = models.PositiveBigIntegerField(
@@ -37,7 +38,9 @@ class User(AbstractUser):
     deleted_at = models.DateTimeField(null=True,blank=True)
 
     USERNAME_FIELD = 'cc'
-    REQUIRED_FIELDS = ['first_name','last_name','email','cc','phone_number']
+    REQUIRED_FIELDS = ['first_name','last_name','email','phone_number']
+
+    objects = CustomUserManager()
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} - CC: {self.cc}"
