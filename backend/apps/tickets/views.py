@@ -1,9 +1,10 @@
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework import status
-from apps.users.models import Cajero
+from django.utils import timezone  # Añadido esta importación que faltaba
+from apps.users.models import User  # Correcto: User en lugar de Cajero
 from apps.tickets.models import UsuarioEspera, CajeroUsuarioEspera
-from apps.users.serializers import CajeroSerializer
+from apps.users.serializers import UserSerializer  # Ahora usamos UserSerializer para los cajeros
 from apps.tickets.serializers import UsuarioEsperaSerializer, CajeroUsuarioEsperaSerializer
 
 class UsuarioEsperaViewSet(viewsets.ModelViewSet):

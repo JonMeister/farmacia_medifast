@@ -31,6 +31,11 @@ class User(AbstractUser):
     historia_c = models.ImageField(upload_to='historias_clinicas/', null=True, blank=True)
     prioridad = models.BooleanField(default=False)
     dob = models.DateTimeField()
+    
+    # Campos de roles personalizados
+    is_client = models.BooleanField(default=True)
+    is_cajero = models.BooleanField(default=False)
+    
     groups = models.ManyToManyField(Group, related_name="custom_user_groups")
     user_permissions = models.ManyToManyField(Permission, related_name="custom_user_permissions")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -51,13 +56,28 @@ class User(AbstractUser):
         verbose_name_plural = 'Usuarios'
         ordering = ['id']
 
-class Cajero(models.Model):
-    id = models.AutoField(primary_key=True)
-    nickname = models.CharField(max_length=50, unique=True)
-    contraseña = models.CharField(max_length=128)  
+class Caja(models.Model):
+    numero = models.PositiveIntegerField(unique=True)
+    cajero = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        limit_choices_to={'is_cajero': True},
+        related_name='cajas'
+    )
+    activa = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    deleted_at = models.DateTimeField(null=True,blank=True)
+
+    def __str__(self):
+        return f"Caja {self.numero} - Cajero: {self.cajero.first_name if self.cajero else 'Sin asignar'}"
+
+    class Meta:
+        db_table = 'CAJA'
+        verbose_name = 'Caja'
+        verbose_name_plural = 'Cajas'
+        ordering = ['numero']
 
 
 

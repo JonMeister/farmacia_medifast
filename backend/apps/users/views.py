@@ -6,8 +6,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from django.contrib.auth.hashers import make_password
-from apps.users.models import User,Cajero
-from apps.users.serializers import UserSerializer, CajeroSerializer
+from apps.users.models import User, Caja
+from apps.users.serializers import UserSerializer, CajaSerializer
 from rest_framework.decorators import api_view
 from rest_framework.authtoken.models import Token
 from rest_framework.views import APIView
@@ -90,13 +90,23 @@ class CustomAuthToken(APIView):
         token, created = Token.objects.get_or_create(user=user)
         return Response({
             "token": token.key,
-            "is_staff": user.is_staff
+            "is_staff": user.is_staff,
+            "is_client": user.is_client,
+            "is_cajero": user.is_cajero,
             })
 
        
-class CajeroViewSet(viewsets.ModelViewSet):
-    queryset = Cajero.objects.all()
-    serializer_class = CajeroSerializer
+class CajaViewSet(viewsets.ModelViewSet):
+    queryset = Caja.objects.all()
+    serializer_class = CajaSerializer
+    
+    @action(detail=False, methods=['get'])
+    def cajeros_disponibles(self, request):
+        """Devuelve lista de usuarios que son cajeros y no están asignados a una caja"""
+        cajeros_asignados = Caja.objects.exclude(cajero=None).values_list('cajero', flat=True)
+        cajeros_disponibles = User.objects.filter(is_cajero=True).exclude(id__in=cajeros_asignados)
+        serializer = UserSerializer(cajeros_disponibles, many=True)
+        return Response(serializer.data)
 
 
 

@@ -16,14 +16,14 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include, re_path
-from apps.users.views import (UserViewSet,CajeroViewSet, CustomAuthToken)
+from apps.users.views import (UserViewSet,CajaViewSet, CustomAuthToken)
 from apps.tickets.views import (UsuarioEsperaViewSet,CajeroUsuarioEsperaViewSet)
 from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter()
 router.register(r'users',UserViewSet)
 router.register(r'usuarios-espera', UsuarioEsperaViewSet, basename="usuario-espera")
-router.register(r'cajeros', CajeroViewSet)
+router.register(r'cajas', CajaViewSet)
 router.register(r'cajeros-usuarios-espera', CajeroUsuarioEsperaViewSet)
 
 urlpatterns = [

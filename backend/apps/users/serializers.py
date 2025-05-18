@@ -1,12 +1,12 @@
 from rest_framework import serializers
-from apps.users.models import User,Cajero
+from apps.users.models import User, Caja
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
             'id','username','password','first_name', 'last_name', 'email', 'cc', 'phone_number', 'historia_c',
-            'prioridad', 'dob', 'is_staff', 'is_active', 'created_at', 'updated_at', 'deleted_at'
+            'prioridad', 'dob', 'is_client','is_cajero', 'is_staff', 'is_active', 'created_at', 'updated_at', 'deleted_at'
         ]
         extra_kwargs = {
             'password': {'write_only': True},  # No mostrar la contraseña en respuestas
@@ -35,7 +35,15 @@ class UserSerializer(serializers.ModelSerializer):
         return instance
 
 
-class CajeroSerializer(serializers.ModelSerializer):
+class CajaSerializer(serializers.ModelSerializer):
+    cajero_nombre = serializers.SerializerMethodField()
+    
     class Meta:
-        model = Cajero
-        fields = '__all__'
+        model = Caja
+        fields = ['id', 'numero', 'cajero', 'cajero_nombre', 'activa', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
+    
+    def get_cajero_nombre(self, obj):
+        if obj.cajero:
+            return f"{obj.cajero.first_name} {obj.cajero.last_name}"
+        return "Sin asignar"

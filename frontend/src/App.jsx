@@ -4,11 +4,10 @@ import SelectorService from "./pages/Services";
 import ScheduleSelector from "./pages/schedules";
 import Shift from "./pages/shift";
 import AdminDashboard from "./pages/admin";
-import CajerosView from "./pages/cajerosView";
+import Cajas from "./pages/cajas";
 import Resenas from "./pages/resenas";
 import Estadisticas from "./pages/estadisticas";
 import Turno from "./pages/turnos";
-import AñadirCaja from "./pages/añadirCaja";
 import Header from "./components/Header";
 import UserList from "./components/UserList";
 import Footer from "./components/Footer";
@@ -29,11 +28,10 @@ function App() {
           <Route path="/servicios" element={<SelectorService />} />
           <Route path="/schedules" element={<ScheduleSelector />} />
           <Route path="/shift" element={<Shift />} />
-          <Route path="/cajeros" element={<CajerosView />} />
+          <Route path="/cajas" element={<Cajas />} />
           <Route path="/resenas" element={<Resenas />} />
           <Route path="/estadisticas" element={<Estadisticas />} />
           <Route path="/turno" element={<Turno />} />
-          <Route path="/añadirCaja" element={<AñadirCaja />} />
         </Routes>
 
         <Footer />

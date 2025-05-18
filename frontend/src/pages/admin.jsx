@@ -12,7 +12,7 @@ export default function AdminDashboard() {
 
   const options = [
     { label: "Estadísticas", icon: estadisticasImg, path: "/estadisticas" },
-    { label: "Cajeros", icon: cajerosImg, path: "/cajeros" },
+    { label: "Cajas", icon: cajerosImg, path: "/cajas" },
     { label: "Servicios", icon: serviciosImg, path: "/servicios" },
     { label: "Usuarios", icon: usuariosImg, path: "/clienteManagement" },
     { label: "Reseñas", icon: resenasImg, path: "/resenas" },
