@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, useLocation} from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import Login from "./pages/Login";
 import SelectorService from "./pages/Services";
 import ScheduleSelector from "./pages/schedules";
@@ -9,23 +9,23 @@ import Resenas from "./pages/resenas";
 import Estadisticas from "./pages/estadisticas";
 import Turno from "./pages/turnos";
 import AñadirCaja from "./pages/añadirCaja";
-import Header  from "./components/Header";
+import Header from "./components/Header";
 import UserList from "./components/UserList";
 import Footer from "./components/Footer";
 
-function App() { 
+function App() {
   return (
     <div
-    className="max-h-screen bg-gray-300 flex flex-col bg-cover bg-center"
-    style={{ backgroundImage: "url(src/assets/FondoClaro.jpg)" }}
+      className="min-h-screen bg-gray-300 flex flex-col bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: "url(src/assets/FondoClaro.jpg)" }}
     >
-      <BrowserRouter>      
+      <BrowserRouter>
         <Header />
 
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/clienteManagement" element={<UserList/>} />
+          <Route path="/clienteManagement" element={<UserList />} />
           <Route path="/servicios" element={<SelectorService />} />
           <Route path="/schedules" element={<ScheduleSelector />} />
           <Route path="/shift" element={<Shift />} />
@@ -37,7 +37,6 @@ function App() {
         </Routes>
 
         <Footer />
-
       </BrowserRouter>
     </div>
   );
