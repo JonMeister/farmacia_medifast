@@ -79,11 +79,16 @@ class Caja(models.Model):
         verbose_name_plural = 'Cajas'
         ordering = ['numero']
 
+class Servicio(models.Model):
+    descripcion = models.CharField(max_length=200)
+    etiqueta = models.CharField(max_length=50)
+    prioridad = models.BooleanField(default=False)
 
+    def __str__(self):
+        return f"{self.etiqueta} - {self.descripcion}"
 
-
-"""def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-        self.first_name = self.first_name.upper()
-        self.last_name = self.last_name.upper()
-        self.email = self.email.lower()
-        super(User, self).save()"""
+    class Meta:
+        db_table = 'SERVICIO'
+        verbose_name = 'Servicio'
+        verbose_name_plural = 'Servicios'
+        ordering = ['id']

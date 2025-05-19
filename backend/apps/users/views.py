@@ -6,8 +6,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from django.contrib.auth.hashers import make_password
-from apps.users.models import User, Caja
-from apps.users.serializers import UserSerializer, CajaSerializer
+from apps.users.models import User, Caja, Servicio
+from apps.users.serializers import UserSerializer, CajaSerializer, ServicioSerializer
 from rest_framework.decorators import api_view
 from rest_framework.authtoken.models import Token
 from rest_framework.views import APIView
@@ -108,9 +108,8 @@ class CajaViewSet(viewsets.ModelViewSet):
         serializer = UserSerializer(cajeros_disponibles, many=True)
         return Response(serializer.data)
 
-
+class ServicioViewSet(viewsets.ModelViewSet):
+    queryset = Servicio.objects.all()
+    serializer_class = ServicioSerializer
 
 #urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-
-
-# Create your views here.

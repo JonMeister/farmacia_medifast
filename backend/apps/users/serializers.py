@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from apps.users.models import User, Caja
+from apps.users.models import User, Caja, Servicio
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -47,3 +47,10 @@ class CajaSerializer(serializers.ModelSerializer):
         if obj.cajero:
             return f"{obj.cajero.first_name} {obj.cajero.last_name}"
         return "Sin asignar"
+
+
+class ServicioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Servicio
+        fields = ['id', 'descripcion', 'etiqueta', 'prioridad']
+        read_only_fields = ['id']
