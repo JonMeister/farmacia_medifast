@@ -11,6 +11,7 @@ import Turno from "./pages/turnos";
 import Header from "./components/Header";
 import UserList from "./components/UserList";
 import Footer from "./components/Footer";
+import { Toaster }from "react-hot-toast"
 
 function App() {
   return (
@@ -33,7 +34,7 @@ function App() {
           <Route path="/estadisticas" element={<Estadisticas />} />
           <Route path="/turno" element={<Turno />} />
         </Routes>
-
+        <Toaster/>
         <Footer />
       </BrowserRouter>
     </div>

@@ -5,10 +5,16 @@ import cajerosImg from "../assets/cajeros.png";
 import serviciosImg from "../assets/servicios.png";
 import usuariosImg from "../assets/ids.png";
 import resenasImg from "../assets/resenas.png";
-import UserList from "../components/UserList";
+
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+
+  const isStaff = localStorage.getItem("is_staff") === "true"; 
+
+  if (!isStaff) {
+    return <p>No tienes permiso para acceder a esta sección.</p>;
+  }
 
   const options = [
     { label: "Estadísticas", icon: estadisticasImg, path: "/estadisticas" },

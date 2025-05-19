@@ -1,4 +1,11 @@
 export default function resenas() {
+
+  const isStaff = localStorage.getItem("is_staff") === "true"; 
+
+  if (!isStaff) {
+    return <p>No tienes permiso para acceder a esta sección.</p>;
+  }
+  
   return (
     <div className="flex justify-center items-center min-h-screen">
       <div className="bg-white p-8 rounded-lg shadow-lg w-2xl max-w-3xl">

@@ -22,18 +22,24 @@ export default function Login() {
         password: password,
       });
 
-      const { token, is_staff } = response.data;
+      const { token, is_staff, is_client, is_cajero} = response.data;
       localStorage.setItem("token", token);
       localStorage.setItem("is_staff", is_staff);
+      localStorage.setItem("is_client", is_client);
+      localStorage.setItem("is_cajero", is_cajero);
 
       console.log(token); //Eliminar despues
       console.log("Admin:", is_staff); //Eliminar despues
 
       if (is_staff) {
         navigate("/admin");
-      } else {
-        navigate("/turno");
       }
+
+      if (is_client){
+        navigate("/turno")
+      }
+
+      
     } catch (error) {
       alert(
         "Error al iniciar sesión: " +

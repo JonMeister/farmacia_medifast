@@ -7,6 +7,13 @@ import {
 } from "../api/user.api";
 
 export default function ClientManagement({ users }) {
+
+  const isStaff = localStorage.getItem("is_staff") === "true"; 
+
+  if (!isStaff) {
+    return <p>No tienes permiso para acceder a esta sección.</p>;
+  }
+  
   console.log("Users recibidos:", users);
   const [allClients, setAllClients] = useState(
     Array.isArray(users) ? users : []

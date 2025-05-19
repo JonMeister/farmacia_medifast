@@ -8,6 +8,13 @@ import {
 } from "../api/caja.api";
 
 export default function CajerosView() {
+
+  const isStaff = localStorage.getItem("is_staff") === "true"; 
+
+  if (!isStaff) {
+    return <p>No tienes permiso para acceder a esta sección.</p>;
+  }
+  
   // Estados
   const [cajas, setCajas] = useState([]);
   const [cajeros, setCajeros] = useState([]);
