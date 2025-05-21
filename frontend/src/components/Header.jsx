@@ -1,12 +1,11 @@
-import { useNavigate, useLocation} from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export default function Header() {
-
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   return (
-    <header className="bg-white p-4 flex justify-between items-center">
+    <header className="bg-white p-4 flex justify-between items-center mb-8">
       <div className="flex items-center">
         <img
           src="src/assets/medifast_logo.png"
@@ -18,15 +17,15 @@ export default function Header() {
           <span className="text-yellow-500">fast</span>
         </span>
       </div>
-      
+
       {location.pathname !== "/" && (
-          <button
-            className="bg-yellow-600 text-white hover:bg-yellow-700 cursor-pointer px-4 py-2 rounded-lg font-semibold w-32"
-            onClick={() => navigate(-1)}
-          >
-            Atrás
-          </button>
-        )}
+        <button
+          className="bg-yellow-600 text-white hover:bg-yellow-700 cursor-pointer px-4 py-2 rounded-lg font-semibold w-32"
+          onClick={() => navigate(-1)}
+        >
+          Atrás
+        </button>
+      )}
     </header>
   );
 }

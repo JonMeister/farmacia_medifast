@@ -5,12 +5,12 @@ import cajerosImg from "../assets/cajeros.png";
 import serviciosImg from "../assets/servicios.png";
 import usuariosImg from "../assets/ids.png";
 import resenasImg from "../assets/resenas.png";
-
+import productosImg from "../assets/productos.png";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
 
-  const isStaff = localStorage.getItem("is_staff") === "true"; 
+  const isStaff = localStorage.getItem("is_staff") === "true";
 
   if (!isStaff) {
     return <p>No tienes permiso para acceder a esta sección.</p>;
@@ -21,6 +21,7 @@ export default function AdminDashboard() {
     { label: "Cajas", icon: cajerosImg, path: "/cajas" },
     { label: "Servicios", icon: serviciosImg, path: "/servicios" },
     { label: "Usuarios", icon: usuariosImg, path: "/clienteManagement" },
+    { label: "Productos", icon: productosImg, path: "/producto" },
     { label: "Reseñas", icon: resenasImg, path: "/resenas" },
   ];
 

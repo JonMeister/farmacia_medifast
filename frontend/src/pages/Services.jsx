@@ -132,16 +132,12 @@ export default function ServicioEditor() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
-      <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">
-        Gestión de Servicios
-      </h1>
-
       {/* Contenedor principal con diseño responsive de 2 columnas */}
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Columna izquierda - Lista de servicios */}
         <div className="flex-1 bg-white rounded-xl shadow p-4 md:p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold">Servicios disponibles</h2>
+            <h2 className="text-2xl font-semibold">Gestión de Servicios</h2>
             <Button
               className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg"
               onClick={handleShowCreateForm}
@@ -167,7 +163,7 @@ export default function ServicioEditor() {
                   }`}
                 >
                   <Button
-                    className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg"
+                    className="w-full px-2 py-1 bg-zinc-400 hover:bg-slate-500 text-sm text-white rounded-lg"
                     onClick={() => {
                       handleSelectServicio(servicio);
                       navigate("/schedules", {
@@ -178,7 +174,7 @@ export default function ServicioEditor() {
                     {servicio.etiqueta}
                   </Button>
 
-                  <p className="text-sm text-gray-600 flex-grow my-4 line-clamp-3">
+                  <p className="text-lg text-gray-600 flex-grow my-4 line-clamp-3">
                     {servicio.descripcion}
                   </p>
 
@@ -245,7 +241,7 @@ export default function ServicioEditor() {
             {showForm ? (
               /* Formulario de creación/edición */
               <>
-                <h2 className="text-xl font-semibold mb-4 pb-2 border-b">
+                <h2 className="text-2xl font-semibold mb-4 pb-2">
                   {editingId ? "Editar Servicio" : "Nuevo Servicio"}
                 </h2>
                 <form onSubmit={handleSave} className="space-y-4">

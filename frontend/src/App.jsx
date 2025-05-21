@@ -11,7 +11,9 @@ import Turno from "./pages/turnos";
 import Header from "./components/Header";
 import UserList from "./components/UserList";
 import Footer from "./components/Footer";
-import { Toaster }from "react-hot-toast"
+import Cajero from "./pages/cajero";
+import Producto from "./pages/producto";
+import { Toaster } from "react-hot-toast";
 
 function App() {
   return (
@@ -33,8 +35,10 @@ function App() {
           <Route path="/resenas" element={<Resenas />} />
           <Route path="/estadisticas" element={<Estadisticas />} />
           <Route path="/turno" element={<Turno />} />
+          <Route path="/cajero" element={<Cajero />} />
+          <Route path="/producto" element={<Producto />} />
         </Routes>
-        <Toaster/>
+        <Toaster />
         <Footer />
       </BrowserRouter>
     </div>

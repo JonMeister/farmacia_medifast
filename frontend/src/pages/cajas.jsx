@@ -8,13 +8,12 @@ import {
 } from "../api/caja.api";
 
 export default function CajerosView() {
-
-  const isStaff = localStorage.getItem("is_staff") === "true"; 
+  const isStaff = localStorage.getItem("is_staff") === "true";
 
   if (!isStaff) {
     return <p>No tienes permiso para acceder a esta sección.</p>;
   }
-  
+
   // Estados
   const [cajas, setCajas] = useState([]);
   const [cajeros, setCajeros] = useState([]);
@@ -138,25 +137,95 @@ export default function CajerosView() {
   }
 
   return (
-    <main className="flex-1 p-6">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Gestión de Cajas</h1>
-          <button
-            onClick={handleShowCreateForm}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium"
-          >
-            Nueva Caja
-          </button>
+    <main className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+      {/* Contenedor principal con diseño responsive de 2 columnas */}
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Columna izquierda - Lista de cajas */}
+        <div className="flex-1 bg-white rounded-xl shadow p-4 md:p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold">Gestión de Cajas</h1>
+            <button
+              onClick={handleShowCreateForm}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium"
+            >
+              Nueva Caja
+            </button>
+          </div>
+
+          {/* Lista de cajas */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            {cajas.length > 0 ? (
+              cajas.map((caja) => (
+                <div
+                  key={caja.id}
+                  className={`flex items-center border rounded-lg p-4 shadow hover:shadow-md transition ${
+                    !caja.activa ? "bg-gray-100" : "bg-white"
+                  }`}
+                >
+                  {/* Ícono de usuario */}
+                  <div className="w-1/4 flex justify-center items-center">
+                    <div className="border rounded-full h-16 w-16 flex justify-center items-center text-2xl">
+                      👤
+                    </div>
+                  </div>
+
+                  {/* Info de la caja */}
+                  <div className="flex-1 ml-4 w-80">
+                    <div className="flex justify-between items-center mb-2">
+                      <button className="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded-lg inline-block w-3/4">
+                        Caja {caja.numero}
+                      </button>
+                      <span
+                        className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
+                          caja.activa
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-200 text-gray-800"
+                        }`}
+                      >
+                        {caja.activa ? "Activa" : "Inactiva"}
+                      </span>
+                    </div>
+
+                    {/* Nombre del cajero */}
+                    <div className="font-semibold">Cajero:</div>
+                    <div className="mb-3">
+                      {caja.cajero_nombre || "Sin asignar"}
+                    </div>
+
+                    {/* Botones de acción */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleShowEditForm(caja)}
+                        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm flex-1"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleDelete(caja.id)}
+                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm flex-1"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-2 text-center py-8 text-gray-500">
+                No hay cajas disponibles. ¡Agrega una nueva caja!
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Formulario de Creación/Edición */}
+        {/* Columna derecha - Formulario de creación/edición */}
         {showForm && (
-          <div className="bg-gray-50 p-4 rounded-lg mb-6 border border-gray-200">
-            <h2 className="text-xl font-semibold mb-4">
+          <div className="lg:w-2/5 xl:w-1/3 bg-white rounded-xl shadow p-5 h-fit">
+            <h2 className="text-xl font-semibold mb-4 pb-2 border-b">
               {editingId ? "Editar Caja" : "Nueva Caja"}
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+            <div className="space-y-4">
               <div>
                 <label className="block mb-1 text-sm font-medium">
                   Número de Caja
@@ -206,91 +275,26 @@ export default function CajerosView() {
                 />
                 <label className="text-sm">Caja Activa</label>
               </div>
-            </div>
 
-            <div className="flex gap-3 mt-4">
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium"
-              >
-                {editingId ? "Guardar Cambios" : "Crear Caja"}
-              </button>
+              <div className="grid grid-cols-2 gap-2 pt-4">
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md"
+                >
+                  {editingId ? "Actualizar" : "Crear"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md"
+                >
+                  Cancelar
+                </button>
+              </div>
             </div>
           </div>
         )}
-
-        {/* Lista de cajas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          {cajas.length > 0 ? (
-            cajas.map((caja) => (
-              <div
-                key={caja.id}
-                className={`flex items-center border rounded-lg p-4 shadow hover:shadow-md transition ${
-                  !caja.activa ? "bg-gray-100" : "bg-white"
-                }`}
-              >
-                {/* Ícono de usuario */}
-                <div className="w-1/4 flex justify-center items-center">
-                  <div className="border rounded-full h-16 w-16 flex justify-center items-center text-2xl">
-                    👤
-                  </div>
-                </div>
-
-                {/* Info de la caja */}
-                <div className="flex-1 ml-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <button className="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded-lg inline-block w-3/4">
-                      Caja {caja.numero}
-                    </button>
-                    <span
-                      className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
-                        caja.activa
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-200 text-gray-800"
-                      }`}
-                    >
-                      {caja.activa ? "Activa" : "Inactiva"}
-                    </span>
-                  </div>
-
-                  {/* Nombre del cajero */}
-                  <div className="font-semibold">Cajero:</div>
-                  <div className="mb-3">
-                    {caja.cajero_nombre || "Sin asignar"}
-                  </div>
-
-                  {/* Botones de acción */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleShowEditForm(caja)}
-                      className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm flex-1"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleDelete(caja.id)}
-                      className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm flex-1"
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="col-span-2 text-center py-8 text-gray-500">
-              No hay cajas disponibles. ¡Agrega una nueva caja!
-            </div>
-          )}
-        </div>
       </div>
     </main>
   );
