@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'apps.users',
     'apps.admins',
     'apps.tickets',
+    'apps.products',
     'corsheaders',
     'rest_framework',
     'rest_framework.authtoken'
@@ -83,14 +84,17 @@ WSGI_APPLICATION = 'DS1.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+# No volver a poner las credenciales de la base de datos como strings, usar siempre variables de entorno.
+# Pesima practica, da paso a que cualquiera pueda tener acceso a la información.
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'totti',
-        'USER': 'totti',
-        'PASSWORD': 'pinito',
-        'HOST': 'localhost',    
-        'PORT': '5432',         
+        'NAME': os.getenv("DB_NAME"),
+        'USER': os.getenv("DB_USER"),
+        'PASSWORD': os.getenv("DB_PASSWORD"),
+        'HOST': os.getenv("DB_HOST"),    
+        'PORT': os.getenv("DB_PORT"),         
     }
 }
 

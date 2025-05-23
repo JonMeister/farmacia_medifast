@@ -1,3 +1,4 @@
+"""
 from django.shortcuts import render
 from django.conf import settings
 from django.conf.urls.static import static
@@ -102,7 +103,7 @@ class CajaViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def cajeros_disponibles(self, request):
-        """Devuelve lista de usuarios que son cajeros y no están asignados a una caja"""
+        # Devuelve lista de usuarios que son cajeros y no están asignados a una caja
         cajeros_asignados = Caja.objects.exclude(cajero=None).values_list('cajero', flat=True)
         cajeros_disponibles = User.objects.filter(is_cajero=True).exclude(id__in=cajeros_asignados)
         serializer = UserSerializer(cajeros_disponibles, many=True)
@@ -113,3 +114,4 @@ class ServicioViewSet(viewsets.ModelViewSet):
     serializer_class = ServicioSerializer
 
 #urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+"""

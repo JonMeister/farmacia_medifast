@@ -27,9 +27,9 @@ class Horario(models.Model):
 class Turno(models.Model):
 
     """ Atributos de llaves foraneas a las tablas necesarias """
-    ID_Cliente = models.ForeignKey(Cliente, null = False, on_delete = models.SET_DEFAULT) # AJustar para guardar a nombre de cliente default
-    ID_Caja = models.ForeignKey(Caja, null = False, on_delete = models.SET_DEFAULT) # AJustar para guardar a nombre de caja default
-    ID_Servicio = models.ForeignKey(Servicio, null = False, on_delete = models.SET_DEFAULT) # Deshabilitar el servicio unicamente
+    ID_Cliente = models.ForeignKey(Cliente, null = False, on_delete = models.SET_DEFAULT, default = 1) # AJustar para guardar a nombre de cliente default
+    ID_Caja = models.ForeignKey(Caja, null = False, on_delete = models.SET_DEFAULT, default = 1) # AJustar para guardar a nombre de caja default
+    ID_Servicio = models.ForeignKey(Servicio, null = False, on_delete = models.SET_DEFAULT, default = 1) # Deshabilitar el servicio unicamente
 
     Cedula_manual = models.CharField(max_length = 12)
 
@@ -42,7 +42,7 @@ class Factura(models.Model):
 
     """ Tabla intermedia entre los productos y el turno """
 
-    Turno = models.ForeignKey(Turno, null = False, on_delete = models.SET_DEFAULT) # Es necesario conocer los productos vendidos,
+    Turno = models.ForeignKey(Turno, null = False, on_delete = models.SET_DEFAULT, default = 1) # Es necesario conocer los productos vendidos,
                                                                                     # incluso si se llega a eliminar el turno
 
     Producto = models.ForeignKey(Producto, null = True, on_delete = models.SET_NULL) # Es posible que no se reclame un producto

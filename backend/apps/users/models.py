@@ -2,6 +2,7 @@ from django.db import models
 from django.core.validators import RegexValidator
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from .manager import CustomUserManager
+from apps.tickets.models import Caja
 
 class Rol(models.Model):
     administrador = models.BooleanField()
@@ -46,7 +47,8 @@ class User(AbstractUser):
 
     dob = models.DateTimeField()
 
-    rol = models.ForeignKey(Rol, on_delete = models.CASCADE, null = False, blank = False)
+    """ No es posible elimnar ninguno de los roles iniciales, por ello se maneja como protected la llave foranea """
+    rol = models.ForeignKey(Rol, on_delete = models.PROTECT, null = False, blank = False) 
     
     groups = models.ManyToManyField(Group, related_name="custom_user_groups")
     user_permissions = models.ManyToManyField(Permission, related_name="custom_user_permissions")
@@ -99,7 +101,7 @@ class Empleado(models.Model):
 
     """  """
 
-    # ID_Caja = models.ForeignKey(ca)
+    ID_Caja = models.ForeignKey(Caja, on_delete = models.SET_NULL, null = False)
 
 class Administrador(models.Model):
 

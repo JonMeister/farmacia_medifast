@@ -1,3 +1,5 @@
+
+"""
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework import status
@@ -20,3 +22,5 @@ class UsuarioEsperaViewSet(viewsets.ModelViewSet):
 class CajeroUsuarioEsperaViewSet(viewsets.ModelViewSet):
     queryset = CajeroUsuarioEspera.objects.all()
     serializer_class = CajeroUsuarioEsperaSerializer
+
+"""
