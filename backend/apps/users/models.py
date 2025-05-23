@@ -3,8 +3,32 @@ from django.core.validators import RegexValidator
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from .manager import CustomUserManager
 
+class Rol(models.Model):
+    administrador = models.BooleanField()
+    cliente = models.BooleanField()
+    Empleado = models.BooleanField()
+
 class User(AbstractUser):
-    phone_number = models.PositiveBigIntegerField(
+
+    """ Atributos necesarios para llevar registro de actualizacions y soft delete sobre la base de datos """
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    deleted_at = models.DateTimeField(null=True,blank=True)
+
+    """ Cedula de ciudadania, atributo que se maneraja para busquedas, no obstante no será llave primaria """
+    cc = models.PositiveBigIntegerField(
+        unique=True, blank=False, null=False,
+        validators=[
+            RegexValidator(
+                regex=r'^\d{6,10}$',
+                message=('No es un número de documento válido'),
+                code='invalid_cc'
+            )
+        ],
+        verbose_name='Cédula ciudadania') 
+
+    """ telefono del usuario """
+    phone_number = models.PositiveBigIntegerField( 
         unique=False,blank=False,null=False,
         validators=[
             RegexValidator(
@@ -16,31 +40,16 @@ class User(AbstractUser):
         verbose_name='Número teléfono'
     )
 
+    dob = models.DateTimeField()
+
     username = None 
 
-    cc = models.PositiveBigIntegerField(
-        unique=True, blank=False, null=False,
-        validators=[
-            RegexValidator(
-                regex=r'^\d{6,10}$',
-                message=('No es un número de documento válido'),
-                code='invalid_cc'
-            )
-        ],
-        verbose_name='Cédula ciudadania')
-    historia_c = models.ImageField(upload_to='historias_clinicas/', null=True, blank=True)
-    prioridad = models.BooleanField(default=False)
     dob = models.DateTimeField()
-    
-    # Campos de roles personalizados
-    is_client = models.BooleanField(default=True)
-    is_cajero = models.BooleanField(default=False)
+
+    rol = models.ForeignKey(Rol, on_delete = models.CASCADE, null = False, blank = False)
     
     groups = models.ManyToManyField(Group, related_name="custom_user_groups")
     user_permissions = models.ManyToManyField(Permission, related_name="custom_user_permissions")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    deleted_at = models.DateTimeField(null=True,blank=True)
 
     USERNAME_FIELD = 'cc'
     REQUIRED_FIELDS = ['first_name','last_name','email','phone_number']
@@ -54,8 +63,65 @@ class User(AbstractUser):
         db_table = 'USER'
         verbose_name = 'Usuario'
         verbose_name_plural = 'Usuarios'
-        ordering = ['id']
+        ordering = ['id'] # metodo de organización por id
 
+class Cliente(models.Model):
+
+    """ LLave foranea a usuario para herencia """
+
+    ID_Usuario = models.ForeignKey(User, on_delete = models.CASCADE, null = False)
+
+    """ Atributos necesarios para llevar registro de actualizacions y soft delete sobre la base de datos """
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    deleted_at = models.DateTimeField(null=True,blank=True)
+
+    """ Prioridad para manejar la cola """  
+
+    prioritario = models.BooleanField()
+
+class Empleado(models.Model):
+
+    """ LLave foranea a usuario para herencia """
+
+    ID_Usuario = models.ForeignKey(User, on_delete = models.CASCADE, null = False)
+
+    """ Atributos necesarios para llevar registro de actualizacions y soft delete sobre la base de datos """
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    deleted_at = models.DateTimeField(null=True,blank=True)
+
+    """  """
+
+    Fecha_contratacion = models.DateField()
+
+    """  """
+
+    # ID_Caja = models.ForeignKey(ca)
+
+class Administrador(models.Model):
+
+    ID_Usuario = models.ForeignKey(User, on_delete = models.CASCADE, null = False)
+
+    """ Atributos necesarios para llevar registro de actualizacions y soft delete sobre la base de datos """
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    deleted_at = models.DateTimeField(null=True,blank=True)
+
+    """ Constraseña que debe ser encriptada """
+
+    Password = models.CharField(max_length = 150)
+
+
+
+
+
+
+
+"""
 class Caja(models.Model):
     numero = models.PositiveIntegerField(unique=True)
     cajero = models.ForeignKey(
@@ -78,7 +144,9 @@ class Caja(models.Model):
         verbose_name = 'Caja'
         verbose_name_plural = 'Cajas'
         ordering = ['numero']
+"""
 
+"""
 class Servicio(models.Model):
     descripcion = models.CharField(max_length=200)
     etiqueta = models.CharField(max_length=50)
@@ -92,3 +160,4 @@ class Servicio(models.Model):
         verbose_name = 'Servicio'
         verbose_name_plural = 'Servicios'
         ordering = ['id']
+"""
