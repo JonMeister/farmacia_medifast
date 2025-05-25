@@ -6,5 +6,5 @@ class TicketsConfig(AppConfig):
     name = 'apps.tickets'
 
     def ready(self):
-        from django.db.utils import OperationalError, ProgrammingError
-        from .signals import create_default_client
+        import apps.tickets.signals
+

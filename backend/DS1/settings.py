@@ -44,8 +44,10 @@ INSTALLED_APPS = [
     'apps.products',
     'corsheaders',
     'rest_framework',
-    'rest_framework.authtoken'
+    'rest_framework.authtoken',
 ]
+
+
 
 AUTH_USER_MODEL = 'users.User'
 

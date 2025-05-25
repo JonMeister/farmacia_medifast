@@ -1,5 +1,5 @@
 from django.db import models
-from apps.users.models import Cliente  # Eliminar la importación de Cajero
+#from apps.users.models import Cliente  # Eliminar la importación de Cajero
 from apps.products.models import Producto
 
 class Caja(models.Model):
@@ -27,7 +27,7 @@ class Horario(models.Model):
 class Turno(models.Model):
 
     """ Atributos de llaves foraneas a las tablas necesarias """
-    ID_Cliente = models.ForeignKey(Cliente, null = False, on_delete = models.SET_DEFAULT, default = 1) # AJustar para guardar a nombre de cliente default
+    ID_Cliente = models.ForeignKey('users.Cliente', null = False, on_delete = models.SET_DEFAULT, default = 1) # AJustar para guardar a nombre de cliente default
     ID_Caja = models.ForeignKey(Caja, null = False, on_delete = models.SET_DEFAULT, default = 1) # AJustar para guardar a nombre de caja default
     ID_Servicio = models.ForeignKey(Servicio, null = False, on_delete = models.SET_DEFAULT, default = 1) # Deshabilitar el servicio unicamente
 

@@ -2,7 +2,7 @@ from django.db import models
 from django.core.validators import RegexValidator
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from .manager import CustomUserManager
-from apps.tickets.models import Caja
+#from apps.tickets.models import Caja
 
 class Rol(models.Model):
     administrador = models.BooleanField()
@@ -101,7 +101,7 @@ class Empleado(models.Model):
 
     """  """
 
-    ID_Caja = models.ForeignKey(Caja, on_delete = models.SET_NULL, null = False)
+    ID_Caja = models.ForeignKey('tickets.Caja', default = 1,  on_delete = models.SET_DEFAULT, null = False)
 
 class Administrador(models.Model):
 
