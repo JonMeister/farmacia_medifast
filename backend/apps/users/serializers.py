@@ -1,3 +1,19 @@
+from .models import User, Empleado
+from rest_framework import serializers
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = '__all__'
+
+
+class EmpleadoSerializer(serializers.ModelSerializer):
+    ID_Usuario = UserSerializer(read_only=True)
+    class Meta:
+        model = Empleado
+        fields = '__all__'
+
+"""
 from rest_framework import serializers
 from apps.users.models import User, Caja, Servicio
 
@@ -16,7 +32,7 @@ class UserSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        """Crear usuario con contraseña encriptada"""
+        #Crear usuario con contraseña encriptada
         password = validated_data.pop('password', None)
         user = User(**validated_data)
         if password:
@@ -25,7 +41,7 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
     def update(self, instance, validated_data):
-        """Actualizar usuario (manteniendo encriptación de contraseña)"""
+        #Actualizar usuario (manteniendo encriptación de contraseña)
         password = validated_data.pop('password', None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -54,3 +70,5 @@ class ServicioSerializer(serializers.ModelSerializer):
         model = Servicio
         fields = ['id', 'descripcion', 'etiqueta', 'prioridad']
         read_only_fields = ['id']
+
+"""
