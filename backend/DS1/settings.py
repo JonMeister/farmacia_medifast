@@ -45,9 +45,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'rest_framework.authtoken',
+    'drf_yasg',
 ]
-
-
 
 AUTH_USER_MODEL = 'users.User'
 
@@ -100,8 +99,6 @@ DATABASES = {
     }
 }
 
-
-
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 
@@ -147,5 +144,11 @@ MEDIA_URL = '/media/'
 
 MEDIA_ROOT = BASE_DIR / 'media'
 
-#Rutas de autorizacion de peticiones
+# Configuración básica de CORS y REST Framework
 CORS_ALLOWED_ORIGINS = ['http://localhost:5173']
+
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ],
+}
