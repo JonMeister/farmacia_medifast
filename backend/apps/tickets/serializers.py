@@ -1,22 +1,34 @@
 from rest_framework import serializers
-from apps.users.models import User  # Reemplazar Cajero por User
-from apps.tickets.models import UsuarioEspera, CajeroUsuarioEspera
+from .models import Servicio, Turno, Horario, Caja, Factura
 
-class UsuarioEsperaSerializer(serializers.ModelSerializer):
+class ServicioSerializer(serializers.ModelSerializer):
     class Meta:
-        model = UsuarioEspera
-        fields = '__all__'
+        model = Servicio
+        fields = ['id', 'Nombre', 'Prioridad', 'Estado']
 
-class CajeroUsuarioEsperaSerializer(serializers.ModelSerializer):
-    # Si necesitas acceder a un nombre de cajero, puedes usar SerializerMethodField
-    cajero_nombre = serializers.SerializerMethodField(read_only=True)
-    
+class CajaSerializer(serializers.ModelSerializer):
     class Meta:
-        model = CajeroUsuarioEspera
-        fields = '__all__'
-    
-    def get_cajero_nombre(self, obj):
-        # Accede a los datos del cajero (que ahora es un User)
-        if obj.cajero:
-            return f"{obj.cajero.first_name} {obj.cajero.last_name}"
-        return "Sin asignar"
+        model = Caja
+        fields = ['id', 'Estado']
+
+class HorarioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Horario
+        fields = ['id', 'Hora_llegada', 'Hora_atencion', 'Hora_salida']
+
+class TurnoSerializer(serializers.ModelSerializer):
+    servicio = ServicioSerializer(source='ID_Servicio', read_only=True)
+    caja = CajaSerializer(source='ID_Caja', read_only=True)
+
+    class Meta:
+        model = Turno
+        fields = [
+            'id', 'ID_Cliente', 'ID_Caja', 'ID_Servicio',
+            'Cedula_manual', 'estado', 'created_at',
+            'updated_at', 'deleted_at', 'servicio', 'caja'
+        ]
+
+class FacturaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Factura
+        fields = ['id', 'Turno', 'Producto', 'Cantidad_Producto']
