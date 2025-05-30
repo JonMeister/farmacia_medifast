@@ -1,4 +1,92 @@
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .services import (
+    contar_clientes_activos,
+    contar_empleados_activos,
+    es_cliente_prioritario,
+    cliente_supera_turnos,
+    obtener_turnos_cliente,
+    actualizar_password_admin,
+    obtener_tiempos_usuario,
+    cliente_es_empleado,
+    clientes_que_son_empleados,
+)
+from .models import Cliente
+from apps.users.serializers import UserSerializer
+class ContarClientesActivosView(APIView):
+    def get(self, request):
+        total = contar_clientes_activos()
+        return Response({'total_clientes_activos': total})
+
+class ContarEmpleadosActivosView(APIView):
+    def get(self, request):
+        total = contar_empleados_activos()
+        return Response({'total_empleados_activos': total})
+
+class PrioritarioClienteView(APIView):
+    def get(self, request, cc):
+        resultado = es_cliente_prioritario(cc)
+        if resultado is None:
+            return Response({'error': 'Cliente no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'prioritario': resultado})
+
+
+class ClienteSuperaTurnosView(APIView):
+    def get(self, request, cc, cantidad):
+        resultado = cliente_supera_turnos(cc, int(cantidad))
+        return Response({'supera_turnos': resultado})
+
+
+class TurnosClienteView(APIView):
+    def get(self, request, cc):
+        turnos = obtener_turnos_cliente(cc)
+        data = [{'id': t.id, 'fecha': t.fecha} for t in turnos]
+        return Response(data)
+
+
+class ActualizarPasswordAdminView(APIView):
+    def post(self, request, cc):
+        nueva_password = request.data.get('nueva_password')
+        if not nueva_password:
+            return Response({'error': 'Debe enviar nueva_password'}, status=status.HTTP_400_BAD_REQUEST)
+        resultado = actualizar_password_admin(cc, nueva_password)
+        if not resultado:
+            return Response({'error': 'Administrador no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'mensaje': 'Contraseña actualizada correctamente'})
+
+
+class TiemposUsuarioView(APIView):
+    def get(self, request, cc):
+        tiempos = obtener_tiempos_usuario(cc)
+        if tiempos is None:
+            return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(tiempos)
+
+
+class ClienteEsEmpleadoView(APIView):
+    def get(self, request, cc):
+        es_empleado = cliente_es_empleado(cc)
+        return Response({'es_empleado': es_empleado})
+
+
+
+class ClienteDetailView(APIView):
+    def get(self, request, cc):
+        cliente = Cliente.objects.filter(ID_Usuario__cc=cc).first()
+        if not cliente:
+            return Response({'error': 'Cliente no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = UserSerializer(cliente)
+        return Response(serializer.data)
+
+class ClientesQueSonEmpleadosView(APIView):
+    def get(self, request):
+        clientes = clientes_que_son_empleados()
+        serializer = UserSerializer(clientes, many=True)
+        return Response(serializer.data)
 """
+
 from django.shortcuts import render
 from django.conf import settings
 from django.conf.urls.static import static
