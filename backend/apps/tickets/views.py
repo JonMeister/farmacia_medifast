@@ -20,6 +20,26 @@ from .utils.horario import (
     calcular_diferencia_horario, actualizar_horario, calcular_duraciones_horario
 )
 
+"""
+RUTAS PARA SERVICIOS:
+- Lista y creación: 
+  GET, POST /api/tickets/servicios/
+  
+- Detalle, actualización y eliminación: 
+  GET, PUT, DELETE /api/tickets/servicios/{id}/
+  
+- Obtener prioridad de servicio: 
+  GET /api/tickets/servicios/{id}/prioridad/
+  
+- Obtener nombre de servicio: 
+  GET /api/tickets/servicios/{id}/nombre/
+  
+- Buscar servicio por nombre: 
+  GET /api/tickets/servicios/buscar/?nombre={nombre}
+  
+- Verificar estado de servicio: 
+  GET /api/tickets/servicios/{id}/estado/
+"""
 class ServicioViewSet(viewsets.ModelViewSet):
     queryset = Servicio.objects.all()
     serializer_class = ServicioSerializer
@@ -51,6 +71,20 @@ class ServicioViewSet(viewsets.ModelViewSet):
         estado = get_servicio_estado(pk)
         return Response({'estado': estado})
 
+"""
+RUTAS PARA CAJAS:
+- Lista y creación: 
+  GET, POST /api/tickets/cajas/
+  
+- Detalle, actualización y eliminación: 
+  GET, PUT, DELETE /api/tickets/cajas/{id}/
+  
+- Obtener estado de caja: 
+  GET /api/tickets/cajas/{id}/estado/
+  
+- Cambiar estado de caja: 
+  POST /api/tickets/cajas/{id}/cambiar_estado/
+"""
 class CajaViewSet(viewsets.ModelViewSet):
     queryset = Caja.objects.all()
     serializer_class = CajaSerializer
@@ -75,6 +109,41 @@ class CajaViewSet(viewsets.ModelViewSet):
         except Caja.DoesNotExist:
             return Response({'error': 'Caja no encontrada'}, status=status.HTTP_404_NOT_FOUND)
 
+"""
+RUTAS PARA TURNOS:
+- Lista y creación: 
+  GET, POST /api/tickets/turnos/
+  
+- Detalle, actualización y eliminación: 
+  GET, PUT, DELETE /api/tickets/turnos/{id}/
+  
+- Contar turnos por servicio: 
+  GET /api/tickets/turnos/por_servicio/?servicio_id={id}
+  
+- Contar turnos por tipo de usuario: 
+  GET /api/tickets/turnos/por_tipo_usuario/
+  
+- Contar turnos por estado: 
+  GET /api/tickets/turnos/por_estado/
+  
+- Contar turnos por día: 
+  GET /api/tickets/turnos/por_dia/?fecha={YYYY-MM-DD}
+  
+- Obtener información de caja y fechas: 
+  GET /api/tickets/turnos/{id}/info_caja/
+  
+- Obtener información del cliente: 
+  GET /api/tickets/turnos/{id}/info_cliente/
+  
+- Obtener turnos con servicios deshabilitados: 
+  GET /api/tickets/turnos/servicios_deshabilitados/
+  
+- Buscar turno por cédula: 
+  GET /api/tickets/turnos/por_cedula/?cedula={cedula}
+  
+- Contar turnos por periodo: 
+  GET /api/tickets/turnos/por_periodo/?inicio={YYYY-MM-DD}&fin={YYYY-MM-DD}
+"""
 class TurnoViewSet(viewsets.ModelViewSet):
     queryset = Turno.objects.all()
     serializer_class = TurnoSerializer
@@ -149,6 +218,28 @@ class TurnoViewSet(viewsets.ModelViewSet):
         cantidad = contar_turnos_periodo(fecha_inicio, fecha_fin)
         return Response({'cantidad': cantidad})
 
+"""
+RUTAS PARA HORARIOS:
+- Lista y creación: 
+  GET, POST /api/tickets/horarios/
+  
+- Detalle, actualización y eliminación: 
+  GET, PUT, DELETE /api/tickets/horarios/{id}/
+  
+- Calcular diferencia de tiempo: 
+  GET /api/tickets/horarios/{id}/diferencia_tiempo/
+  
+- Obtener duraciones detalladas: 
+  GET /api/tickets/horarios/{id}/duraciones/
+  
+- Actualizar fechas de horario: 
+  PUT /api/tickets/horarios/{id}/actualizar_fechas/
+  Body: {
+    "Hora_llegada": "2024-05-29T10:00:00Z",
+    "Hora_atencion": "2024-05-29T10:15:00Z",
+    "Hora_salida": "2024-05-29T10:30:00Z"
+  }
+"""
 class HorarioViewSet(viewsets.ModelViewSet):
     queryset = Horario.objects.all()
     serializer_class = HorarioSerializer
