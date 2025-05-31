@@ -4,12 +4,10 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework import permissions
 from rest_framework.routers import DefaultRouter
-from drf_yasg.views import get_schema_view
-from drf_yasg import openapi
 
 from apps.users.views import (
     # ViewSets
-    UserViewSet, CajaViewSet, ServicioViewSet,
+    UserViewSet,
 
     # Funcionales
     ContarClientesActivosView, ContarEmpleadosActivosView,
@@ -29,24 +27,20 @@ from apps.users.views import (
     register, CustomAuthToken
 )
 
-schema_view = get_schema_view(
-    openapi.Info(
-        title="Farmacia API",
-        default_version='v1',
-        description="API para el sistema de farmacia",
-        terms_of_service="https://www.google.com/policies/terms/",
-        contact=openapi.Contact(email="contact@farmacia.local"),
-        license=openapi.License(name="BSD License"),
-    ),
-    public=True,
-    permission_classes=(permissions.AllowAny,),
+from apps.tickets.views import (
+    ServicioViewSet,
+    CajaViewSet,
+    TurnoViewSet,
+    HorarioViewSet
 )
 
 # ViewSets
 router = DefaultRouter()
 router.register(r'backend/api/users/usuarios-model', UserViewSet)
-router.register(r'backend/api/users/cajas', CajaViewSet)
-router.register(r'backend/api/users/servicios', ServicioViewSet)
+router.register(r'backend/api/tickets/servicios', ServicioViewSet)
+router.register(r'backend/api/tickets/cajas', CajaViewSet)
+router.register(r'backend/api/tickets/turnos', TurnoViewSet)
+router.register(r'backend/api/tickets/horarios', HorarioViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -89,10 +83,7 @@ urlpatterns = [
     path('backend/api/users/usuarios/rol/', UserRolAPIView.as_view()),
     path('backend/api/users/usuarios/menores_mayores/', UserMenorMayorAPIView.as_view()),
     path('backend/api/users/empleados/menores_mayores/', EmpleadoMenorMayorAPIView.as_view()),
-
-    # Swagger
-    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
 ]
-
 # Añadir URLs de router (ViewSets)
 urlpatterns += router.urls
+

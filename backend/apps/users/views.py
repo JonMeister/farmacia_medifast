@@ -10,18 +10,48 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth import authenticate
 from datetime import date
 
+# Modelos de users
 from apps.users.models import (
-    User, Empleado, Rol, Cliente, Caja, Servicio
+    User, Empleado, Rol, Cliente
 )
+
+# Serializers de users
 from apps.users.serializers import (
-    UserSerializer, EmpleadoSerializer, CajaSerializer, ServicioSerializer
+    UserSerializer, EmpleadoSerializer
 )
+
 from apps.users.services import (
     contar_clientes_activos, contar_empleados_activos, es_cliente_prioritario,
     cliente_supera_turnos, obtener_turnos_cliente, actualizar_password_admin,
     obtener_tiempos_usuario, cliente_es_empleado, clientes_que_son_empleados
 )
+
+# Imports de Django y DRF
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status, viewsets
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import action, api_view
+from rest_framework.authtoken.models import Token
+from django.utils.dateparse import parse_date
+from django.db.models import Q, Count
+from django.contrib.auth.hashers import make_password
+from django.contrib.auth import authenticate
+from datetime import date
+
+# Imports necesarios de tickets
 from apps.tickets.models import Turno
+
+# Serializers de tickets
+from apps.tickets.serializers import (
+    CajaSerializer, ServicioSerializer
+)
+
+from apps.users.services import (
+    contar_clientes_activos, contar_empleados_activos, es_cliente_prioritario,
+    cliente_supera_turnos, obtener_turnos_cliente, actualizar_password_admin,
+    obtener_tiempos_usuario, cliente_es_empleado, clientes_que_son_empleados
+)
 
 
 # --- Funciones relacionadas con Clientes, Turnos y Administradores ---
@@ -368,20 +398,3 @@ class UserViewSet(viewsets.ModelViewSet):
         instance.is_active = True
         instance.save()
         return Response({"message": "Usuario activado"}, status=status.HTTP_200_OK)
-
-
-class CajaViewSet(viewsets.ModelViewSet):
-    queryset = Caja.objects.all()
-    serializer_class = CajaSerializer
-
-    @action(detail=False, methods=['get'])
-    def cajeros_disponibles(self, request):
-        cajeros_asignados = Caja.objects.exclude(cajero=None).values_list('cajero', flat=True)
-        cajeros_disponibles = User.objects.filter(is_cajero=True).exclude(id__in=cajeros_asignados)
-        serializer = UserSerializer(cajeros_disponibles, many=True)
-        return Response(serializer.data)
-
-
-class ServicioViewSet(viewsets.ModelViewSet):
-    queryset = Servicio.objects.all()
-    serializer_class = ServicioSerializer

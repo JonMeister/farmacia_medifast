@@ -4,8 +4,8 @@ from rest_framework.response import Response
 from django.utils import timezone
 from datetime import datetime
 
-from .models import Servicio, Turno, Horario
-from .serializers import ServicioSerializer, TurnoSerializer, HorarioSerializer
+from .models import Servicio, Turno, Horario, Caja
+from .serializers import ServicioSerializer, TurnoSerializer, HorarioSerializer, CajaSerializer
 from .utils.servicio import (
     get_servicio_prioridad, get_servicio_nombre, buscar_servicio_por_nombre,
     get_servicio_estado, get_servicios_deshabilitados
@@ -50,6 +50,30 @@ class ServicioViewSet(viewsets.ModelViewSet):
         """Verifica si un servicio está activo"""
         estado = get_servicio_estado(pk)
         return Response({'estado': estado})
+
+class CajaViewSet(viewsets.ModelViewSet):
+    queryset = Caja.objects.all()
+    serializer_class = CajaSerializer
+
+    @action(detail=True, methods=['get'])
+    def estado(self, request, pk=None):
+        """Obtiene el estado de una caja"""
+        try:
+            caja = self.get_object()
+            return Response({'estado': caja.Estado})
+        except Caja.DoesNotExist:
+            return Response({'error': 'Caja no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=True, methods=['post'])
+    def cambiar_estado(self, request, pk=None):
+        """Cambia el estado de una caja"""
+        try:
+            caja = self.get_object()
+            caja.Estado = not caja.Estado
+            caja.save()
+            return Response({'estado': caja.Estado})
+        except Caja.DoesNotExist:
+            return Response({'error': 'Caja no encontrada'}, status=status.HTTP_404_NOT_FOUND)
 
 class TurnoViewSet(viewsets.ModelViewSet):
     queryset = Turno.objects.all()
