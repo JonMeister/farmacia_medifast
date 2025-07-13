@@ -2,12 +2,16 @@ from django.db import models
 from django.core.validators import RegexValidator
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from .manager import CustomUserManager
+from django.utils import timezone
+
 #from apps.tickets.models import Caja
 
 class Rol(models.Model):
     administrador = models.BooleanField()
     cliente = models.BooleanField()
     Empleado = models.BooleanField()
+
+    # No hay opción de borrado, ni soft delete
 
 class User(AbstractUser):
 
@@ -16,7 +20,7 @@ class User(AbstractUser):
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True,blank=True)
 
-    """ Cedula de ciudadania, atributo que se maneraja para busquedas, no obstante no será llave primaria """
+    """ Cedula de ciudadania, atributo que se manejara para busquedas, no obstante no será llave primaria """
     cc = models.PositiveBigIntegerField(
         unique=True, blank=False, null=False,
         validators=[
@@ -41,8 +45,6 @@ class User(AbstractUser):
         verbose_name='Número teléfono'
     )
 
-    dob = models.DateTimeField()
-
     username = None 
 
     dob = models.DateTimeField()
@@ -60,6 +62,14 @@ class User(AbstractUser):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} - CC: {self.cc}"
+    
+    #######################################   Funciones del CRUD   ################################################################
+    
+    def soft_delete(self):
+        if self.deleted_at is not None:
+            self.deleted_at = timezone.now()
+            self.save()
+
 
     class Meta:
         db_table = 'USER'
@@ -82,6 +92,9 @@ class Cliente(models.Model):
     """ Prioridad para manejar la cola """  
 
     prioritario = models.BooleanField()
+
+    def soft_delete(self):
+        pass
 
 class Empleado(models.Model):
 

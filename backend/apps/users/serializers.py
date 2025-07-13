@@ -1,5 +1,26 @@
 from rest_framework import serializers
-from apps.users.models import User, Caja, Servicio
+from apps.users.models import User, Cliente, Administrador
+
+
+class obtener_creacion_actualizacion_administrador(serializers.ModelSerializer):
+
+    class Meta:
+        model = Administrador
+        fields = ['created_at','updated_at'] 
+
+class obtener_creacion_actualizacion_cliente(serializers.ModelSerializer):
+
+    class Meta:
+        model = Cliente
+        fields = ['created_at','updated_at'] 
+
+class admin_password(serializers.ModelSerializer):
+    cc = serializers.IntegerField(min_value=100000, max_value=9999999999)
+    neva_password = serializers.CharField(write_only=True, min_length=6)
+
+class cc_client(serializers.ModelSerializer):
+    cc = serializers.IntegerField(min_value=100000, max_value=9999999999)
+
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -34,23 +55,3 @@ class UserSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-
-class CajaSerializer(serializers.ModelSerializer):
-    cajero_nombre = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Caja
-        fields = ['id', 'numero', 'cajero', 'cajero_nombre', 'activa', 'created_at', 'updated_at']
-        read_only_fields = ['created_at', 'updated_at']
-    
-    def get_cajero_nombre(self, obj):
-        if obj.cajero:
-            return f"{obj.cajero.first_name} {obj.cajero.last_name}"
-        return "Sin asignar"
-
-
-class ServicioSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Servicio
-        fields = ['id', 'descripcion', 'etiqueta', 'prioridad']
-        read_only_fields = ['id']
