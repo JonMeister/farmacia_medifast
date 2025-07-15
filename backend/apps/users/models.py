@@ -93,8 +93,6 @@ class Cliente(models.Model):
 
     prioritario = models.BooleanField()
 
-    def soft_delete(self):
-        pass
 
 class Empleado(models.Model):
 
@@ -118,7 +116,7 @@ class Empleado(models.Model):
 
 class Administrador(models.Model):
 
-    ID_Usuario = models.ForeignKey(User, on_delete = models.CASCADE, null = False)
+    ID_Usuario = models.ForeignKey(User, on_delete = models.CASCADE, null = False, unique = True) # Debe ser unico ese id de usuario
 
     """ Atributos necesarios para llevar registro de actualizacions y soft delete sobre la base de datos """
 
@@ -127,8 +125,6 @@ class Administrador(models.Model):
     deleted_at = models.DateTimeField(null=True,blank=True)
 
     """ Constraseña que debe ser encriptada """
-
-    Password = models.CharField(max_length = 150)
 
 
 

@@ -3,12 +3,118 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework import viewsets, status
 
-from .models import Cliente, User, Administrador, Empleado
-from .serializers import cc_client, admin_password, obtener_creacion_actualizacion_cliente, obtener_creacion_actualizacion_administrador
+from django.utils.timezone import now
+from .models import Cliente, User, Administrador, Empleado, Rol
+from .serializers import (cc_client, admin_password, obtener_creacion_actualizacion_cliente, 
+                          obtener_creacion_actualizacion_administrador, ClienteSerializer, 
+                          UserSerializer, RolSerializer, AdministradorSerializer)
 from apps.tickets.models import Turno
 from apps.tickets.serializers import Turnos_de_un_cliente
 
-class ClienteViewSet(viewsets.ViewSet):
+class AdministradorViewSet(viewsets.ModelViewSet):
+
+    queryset = Administrador.objects.filter(deleted_at__isnull = True)
+    serializer_class = AdministradorSerializer
+
+class RolViewSet(viewsets.ModelViewSet):
+
+    queryset = Rol.objects.all()
+    serializer_class = RolSerializer
+
+
+class UserViewSet(viewsets.ModelViewSet):
+
+    queryset = User.objects.filter(deleted_at__isnull = True)
+    serializer_class = UserSerializer
+
+    def destroy(self, request, *args, **kwargs):
+
+        instance = self.get_object()
+        instance.deleted_at = now()
+        instance.is_active = False
+        instance.save()
+        return Response({'message':'Usuario eliminado'}, status  = status.HTTP_204_NO_CONTENT)
+
+    def create(self, request, *args, **kwargs):
+        from apps.users.models import Cliente, Empleado, Administrador
+
+        data = request.data.copy()
+
+        # Validar rol recibido
+        rol_str = data.get("rol")
+        if rol_str not in ["cliente", "administrador", "empleado"]:
+            return Response({"error": "El rol debe ser 'cliente', 'administrador' o 'empleado'."}, status=400)
+
+        if rol_str == "empleado":
+            rol_str = "Empleado"
+
+        # Crear el objeto Rol correspondiente
+        rol_data = {"cliente": False, "administrador": False, "Empleado": False}
+        rol_data[rol_str] = True
+        rol_obj = Rol.objects.create(**rol_data)
+        data["rol"] = rol_obj.id
+
+        # Si es cliente, la contraseña será la cédula
+        if rol_str == "cliente":
+            data["password"] = str(data.get("cc"))
+
+        cc = data.get("cc")
+
+        try:
+            usuario_existente = User.objects.get(cc=cc)
+
+            if usuario_existente.deleted_at:
+                serializer = self.get_serializer(usuario_existente, data=data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+
+                usuario_existente.set_password(data["password"])
+                usuario_existente.deleted_at = None 
+                usuario_existente.save()
+
+                user = usuario_existente
+
+            else:
+                return Response({"error": "Ya existe un usuario activo con esa cédula."}, status=400)
+
+        except User.DoesNotExist:
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+
+            user = User.objects.get(pk=serializer.data["id"])
+            user.set_password(serializer.validated_data["password"])
+            user.save()
+
+        # Crear entrada en tabla correspondiente
+        if rol_str == "cliente":
+            Cliente.objects.create(ID_Usuario=user)
+        elif rol_str == "Empleado":
+            Empleado.objects.create(ID_Usuario=user, Password=user.password)
+        elif rol_str == "administrador":
+            Administrador.objects.create(ID_Usuario=user, Password=user.password)
+
+        return Response({
+            "message": "Usuario creado correctamente",
+            "id": user.id,
+            "user": UserSerializer(user).data
+        }, status=status.HTTP_201_CREATED)
+
+class ClienteViewSet(viewsets.ModelViewSet):
+
+    queryset = Cliente.objects.filter(deleted_at__isnull = True)
+    serializer_class = ClienteSerializer
+
+    #@action(detail = False, methods = ['get'], url_path = 'all')
+    #def all_clients(self,request):
+
+    def destroy(self,request,*args,**kwargs):
+        instance = self.get_object()
+        instance.deleted_at = now()
+        instance.save()
+        return Response({'message':'Cliente eliminado'}, status  = status.HTTP_204_NO_CONTENT)
+        
+
 
     @action(detail = False, methods = ['post'], url_path = 'es_cliente_y_empleado')
     def es_cliente_y_empleado(self,request):
@@ -279,4 +385,26 @@ class ServicioViewSet(viewsets.ModelViewSet):
     serializer_class = ServicioSerializer
 
 #urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+
+
+{
+  "username": "Sarapankekes",
+  "password": "PeraPapaya123",
+  "first_name": "Sara Manuela",
+  "last_name": "Lozada Salamanca",
+  "email": "Sarapanks@gmail.com",
+  "cc": "100636113",
+  "phone_number": "3008473493",
+  "dob": "1990-05-15",
+  "is_staff": false,
+  "is_active": true
+}
+
+
+{
+  "administrador":false,
+  "cliente":true,
+  "Empleado":false
+}
 """
