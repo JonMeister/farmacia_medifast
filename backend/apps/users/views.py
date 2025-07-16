@@ -2,14 +2,20 @@
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework import viewsets, status
+from django.db import transaction
 
 from django.utils.timezone import now
 from .models import Cliente, User, Administrador, Empleado, Rol
 from .serializers import (cc_client, admin_password, obtener_creacion_actualizacion_cliente, 
                           obtener_creacion_actualizacion_administrador, ClienteSerializer, 
-                          UserSerializer, RolSerializer, AdministradorSerializer)
+                          UserSerializer, RolSerializer, AdministradorSerializer, EmpleadoSerializer)
 from apps.tickets.models import Turno
 from apps.tickets.serializers import Turnos_de_un_cliente
+
+class EmpleadoViewSet(viewsets.ModelViewSet):
+    
+    queryset = Empleado.objects.filter(deleted_at__isnull = True)
+    serializer_class = EmpleadoSerializer
 
 class AdministradorViewSet(viewsets.ModelViewSet):
 
@@ -40,8 +46,10 @@ class UserViewSet(viewsets.ModelViewSet):
 
         data = request.data.copy()
 
+        user = data.get("user")
+
         # Validar rol recibido
-        rol_str = data.get("rol")
+        rol_str = user.get("rol")
         if rol_str not in ["cliente", "administrador", "empleado"]:
             return Response({"error": "El rol debe ser 'cliente', 'administrador' o 'empleado'."}, status=400)
 
@@ -49,56 +57,61 @@ class UserViewSet(viewsets.ModelViewSet):
             rol_str = "Empleado"
 
         # Crear el objeto Rol correspondiente
-        rol_data = {"cliente": False, "administrador": False, "Empleado": False}
-        rol_data[rol_str] = True
-        rol_obj = Rol.objects.create(**rol_data)
-        data["rol"] = rol_obj.id
+        with transaction.atomic():
+            rol_data = {"cliente": False, "administrador": False, "Empleado": False}
+            rol_data[rol_str] = True
+            rol_obj = Rol.objects.create(**rol_data)
+            user["rol"] = rol_obj.id
 
-        # Si es cliente, la contraseña será la cédula
-        if rol_str == "cliente":
-            data["password"] = str(data.get("cc"))
+            # Si es cliente, la contraseña será la cédula
+            if rol_str == "cliente":
+                user["password"] = str(user.get("cc"))
 
-        cc = data.get("cc")
+            cc = user.get("cc")
 
-        try:
-            usuario_existente = User.objects.get(cc=cc)
+            try:
+                usuario_existente = User.objects.get(cc=cc)
 
-            if usuario_existente.deleted_at:
-                serializer = self.get_serializer(usuario_existente, data=data, partial=True)
+                if usuario_existente.deleted_at:
+                    serializer = UserSerializer(data=user)
+                    serializer.is_valid(raise_exception=True)
+                    serializer.save()
+
+                    usuario_existente.set_password(user["password"])
+                    usuario_existente.deleted_at = None 
+                    usuario_existente.save()
+
+                    user = usuario_existente
+
+                else:
+                    return Response({"error": "Ya existe un usuario activo con esa cédula."}, status=400)
+
+            except User.DoesNotExist:
+                serializer = UserSerializer(data=user)
                 serializer.is_valid(raise_exception=True)
-                serializer.save()
+                self.perform_create(serializer)
 
-                usuario_existente.set_password(data["password"])
-                usuario_existente.deleted_at = None 
-                usuario_existente.save()
+                user = User.objects.get(pk=serializer.data["id"])
+                user.set_password(serializer.validated_data["password"])
+                user.save()
 
-                user = usuario_existente
+            # Crear entrada en tabla correspondiente
+            if rol_str == "cliente":
+                prioridad = data.get("aditional").get("prioritario")
+                Cliente.objects.create(ID_Usuario=user, prioritario = prioridad)
+            elif rol_str == "Empleado":
+                fecha = data.get("aditional").get("fecha_contratacion")
+                id_caja = data.get("aditional").get("caja")
+                Empleado.objects.create(ID_Usuario=user, Fecha_contratacion = fecha, ID_Caja = id_caja)
+            elif rol_str == "administrador":
+                Administrador.objects.create(ID_Usuario=user)
 
-            else:
-                return Response({"error": "Ya existe un usuario activo con esa cédula."}, status=400)
-
-        except User.DoesNotExist:
-            serializer = self.get_serializer(data=data)
-            serializer.is_valid(raise_exception=True)
-            self.perform_create(serializer)
-
-            user = User.objects.get(pk=serializer.data["id"])
-            user.set_password(serializer.validated_data["password"])
-            user.save()
-
-        # Crear entrada en tabla correspondiente
-        if rol_str == "cliente":
-            Cliente.objects.create(ID_Usuario=user)
-        elif rol_str == "Empleado":
-            Empleado.objects.create(ID_Usuario=user, Password=user.password)
-        elif rol_str == "administrador":
-            Administrador.objects.create(ID_Usuario=user, Password=user.password)
-
-        return Response({
-            "message": "Usuario creado correctamente",
-            "id": user.id,
-            "user": UserSerializer(user).data
-        }, status=status.HTTP_201_CREATED)
+            return Response({
+                "message": "Usuario creado correctamente",
+                "id": user.id,
+                "user": UserSerializer(user).data
+            }, status=status.HTTP_201_CREATED)
+        
 
 class ClienteViewSet(viewsets.ModelViewSet):
 
@@ -116,7 +129,7 @@ class ClienteViewSet(viewsets.ModelViewSet):
         
 
 
-    @action(detail = False, methods = ['post'], url_path = 'es_cliente_y_empleado')
+    @action(detail = False, methods = ['post'], url_path = 'es_cliente_y_empleado') 
     def es_cliente_y_empleado(self,request):
 
         serializer = cc_client(data = request.data)
@@ -134,7 +147,9 @@ class ClienteViewSet(viewsets.ModelViewSet):
 
             response = es_cliente and es_empleado
 
-            return Response({'cliente_empleado' : response},status = 200)
+            return Response({'cliente_empleado' : response, "nombre" : usuario.first_name,
+                             "apellido" : usuario.last_name, "cc": usuario.cc
+                             },status = 200)
         
         except User.DoesNotExist:
             return Response({'error': 'Usuario no encontrado'}, status=404)
@@ -151,9 +166,9 @@ class ClienteViewSet(viewsets.ModelViewSet):
             usuario = User.objects.get(cc = cc, deleted_at__isnull = True)
             administrador = Administrador.objects.get(ID_Usuario=usuario, deleted_at__isnull = True)
 
-            administrador_serializado = obtener_creacion_actualizacion_administrador(data = administrador)
+            administrador_serializado = obtener_creacion_actualizacion_administrador(administrador)
 
-            return Response({'fechas' : administrador_serializado},status = 200)
+            return Response({'fechas' : administrador_serializado.data},status = 200)
         
         except User.DoesNotExist:
             return Response({'error': 'Usuario no encontrado'}, status=404)
@@ -169,14 +184,15 @@ class ClienteViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception = True)
 
         cc = serializer.validated_data['cc']
+        print(cc)
 
         try:
             usuario = User.objects.get(cc = cc, deleted_at__isnull = True)
             cliente = Cliente.objects.get(ID_Usuario=usuario, deleted_at__isnull = True)
 
-            cliente_serializado = obtener_creacion_actualizacion_cliente(data = cliente)
+            cliente_serializado = obtener_creacion_actualizacion_cliente(cliente)
 
-            return Response({'fechas' : cliente_serializado},status = 200)
+            return Response({'fechas' : cliente_serializado.data},status = 200)
         
         except User.DoesNotExist:
             return Response({'error': 'Usuario no encontrado'}, status=404)
@@ -253,7 +269,7 @@ class ClienteViewSet(viewsets.ModelViewSet):
         except Cliente.DoesNotExist:
             return Response({'detail': 'CLiente no encontrado'}, status=status.HTTP_404_NOT_FOUND)
 
-    @action(detail=False, methods=['post'], url_path='es-prioritario')
+    @action(detail=False, methods=['post'], url_path='es_prioritario')
     def es_prioritario(self, request):
         serializer = cc_client(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -407,4 +423,127 @@ class ServicioViewSet(viewsets.ModelViewSet):
   "cliente":true,
   "Empleado":false
 }
+
+{
+  "ID_Usuario": 2,
+  "prioritario": false
+}
+
+
+{
+  "user": {
+    "first_name": "Carlos",
+    "last_name": "Ramírez",
+    "email": "carlos.ramirez@example.com",
+    "cc": "123456789",
+    "phone_number": "3001234567",
+    "dob": "1990-01-01",
+    "rol": "empleado",
+    "is_staff": false,
+    "is_active": true,
+    "password": "claveSegura123"
+  },
+  "aditional": {
+    "fecha_contratacion": "2023-05-20"
+  }
+}
+
+class UserViewSet(viewsets.ModelViewSet):
+
+    queryset = User.objects.filter(deleted_at__isnull = True)
+    serializer_class = UserSerializer
+
+    def destroy(self, request, *args, **kwargs):
+
+        instance = self.get_object()
+        instance.deleted_at = now()
+        instance.is_active = False
+        instance.save()
+        return Response({'message':'Usuario eliminado'}, status  = status.HTTP_204_NO_CONTENT)
+
+    def create(self, request, *args, **kwargs):
+        from apps.users.models import Cliente, Empleado, Administrador
+
+        data = request.data.copy()
+
+        # Validar rol recibido
+        rol_str = data.get("rol")
+        if rol_str not in ["cliente", "administrador", "empleado"]:
+            return Response({"error": "El rol debe ser 'cliente', 'administrador' o 'empleado'."}, status=400)
+
+        if rol_str == "empleado":
+            rol_str = "Empleado"
+
+        # Crear el objeto Rol correspondiente
+        rol_data = {"cliente": False, "administrador": False, "Empleado": False}
+        rol_data[rol_str] = True
+        rol_obj = Rol.objects.create(**rol_data)
+        data["rol"] = rol_obj.id
+
+        # Si es cliente, la contraseña será la cédula
+        if rol_str == "cliente":
+            data["password"] = str(data.get("cc"))
+
+        cc = data.get("cc")
+
+        try:
+            usuario_existente = User.objects.get(cc=cc)
+
+            if usuario_existente.deleted_at:
+                serializer = self.get_serializer(usuario_existente, data=data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+
+                usuario_existente.set_password(data["password"])
+                usuario_existente.deleted_at = None 
+                usuario_existente.save()
+
+                user = usuario_existente
+
+            else:
+                return Response({"error": "Ya existe un usuario activo con esa cédula."}, status=400)
+
+        except User.DoesNotExist:
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+
+            user = User.objects.get(pk=serializer.data["id"])
+            user.set_password(serializer.validated_data["password"])
+            user.save()
+
+        # Crear entrada en tabla correspondiente
+        if rol_str == "cliente":
+            Cliente.objects.create(ID_Usuario=user)
+        elif rol_str == "Empleado":
+            Empleado.objects.create(ID_Usuario=user, Password=user.password)
+        elif rol_str == "administrador":
+            Administrador.objects.create(ID_Usuario=user, Password=user.password)
+
+        return Response({
+            "message": "Usuario creado correctamente",
+            "id": user.id,
+            "user": UserSerializer(user).data
+        }, status=status.HTTP_201_CREATED)
+
+        {
+  "user": {
+    "first_name": "wegwe",
+    "last_name": "Cwefmreews",
+    "email": "lwro.cawrdero@example.com",
+    "cc": "233186189",
+    "phone_number": "3208231367",
+    "dob": "1990-01-01",
+    "rol": "empleado",
+    "is_staff": false,
+    "is_active": true,
+    "password": "claveSegura123"
+  },
+  "aditional": {
+    "fecha_contratacion": "2000-02-03",
+    "caja": 1
+  }
+}
+
+
 """

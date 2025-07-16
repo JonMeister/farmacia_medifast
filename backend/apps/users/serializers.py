@@ -1,5 +1,10 @@
 from rest_framework import serializers
-from apps.users.models import User, Cliente, Administrador, Rol
+from apps.users.models import User, Cliente, Administrador, Rol, Empleado
+
+class EmpleadoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Empleado
+        fields = '__all__'
 
 class UserPublicSerializer(serializers.ModelSerializer):
     class Meta:
@@ -50,10 +55,16 @@ class obtener_creacion_actualizacion_cliente(serializers.ModelSerializer):
         fields = ['created_at','updated_at'] 
 
 class admin_password(serializers.ModelSerializer):
-    cc = serializers.IntegerField(min_value=100000, max_value=9999999999)
-    neva_password = serializers.CharField(write_only=True, min_length=6)
+    class Meta:
+        model = Administrador
+    #cc = serializers.IntegerField(min_value=100000, max_value=9999999999)
+    #neva_password = serializers.CharField(write_only=True, min_length=6)
 
-class cc_client(serializers.ModelSerializer):
+class cc_client(serializers.Serializer):
+    # the parameter it is an identification by the person
+    #class Meta:
+        #model = Cliente
+        #fields = ['ID_Usuario']
     cc = serializers.IntegerField(min_value=100000, max_value=9999999999)
 
 
@@ -90,3 +101,7 @@ class UserSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+
+class NestedUserSerializer(serializers.Serializer):
+    user = UserSerializer()
+    aditional = serializers.DictField(required=False)
