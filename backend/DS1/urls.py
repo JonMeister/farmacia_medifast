@@ -17,6 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include, re_path
 from apps.users.views import ClienteViewSet, UserViewSet, RolViewSet, AdministradorViewSet, EmpleadoViewSet
+from apps.tickets.views import CajaViewSet, ServicioViewSet
 #from apps.users.views import (UserViewSet,CajaViewSet, CustomAuthToken, ServicioViewSet)
 #from apps.tickets.views import (UsuarioEsperaViewSet,CajeroUsuarioEsperaViewSet)
 from rest_framework.routers import DefaultRouter
@@ -27,6 +28,8 @@ router.register(r'clients', ClienteViewSet, basename="cliente")
 router.register(r'rol', RolViewSet, basename="rol")
 router.register(r'u_admin',AdministradorViewSet, basename = "user_admin")
 router.register(r'employee', EmpleadoViewSet, basename = "empleado")
+router.register(r'caja', CajaViewSet, basename='caja')
+router.register(r'servicio', ServicioViewSet, basename='servicio')
 
 #router.register(r'usuarios-espera', UsuarioEsperaViewSet, basename="usuario-espera")
 #router.register(r'cajas', CajaViewSet)

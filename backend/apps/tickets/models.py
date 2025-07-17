@@ -15,7 +15,7 @@ class Servicio(models.Model):
 
     Nombre = models.CharField(max_length = 100)
     Prioridad = models.IntegerField()
-    Estado = models.BooleanField() # permite saber si el servicio esta deshabilitado o habilitado
+    Estado = models.BooleanField(default = True) # permite saber si el servicio esta deshabilitado o habilitado
 
 class Horario(models.Model):
 
@@ -30,13 +30,12 @@ class Turno(models.Model):
     ID_Cliente = models.ForeignKey('users.Cliente', null = False, on_delete = models.SET_DEFAULT, default = 1) # AJustar para guardar a nombre de cliente default
     ID_Caja = models.ForeignKey(Caja, null = False, on_delete = models.SET_DEFAULT, default = 1) # AJustar para guardar a nombre de caja default
     ID_Servicio = models.ForeignKey(Servicio, null = False, on_delete = models.SET_DEFAULT, default = 1) # Deshabilitar el servicio unicamente
+    ID_Horario = models.ForeignKey(Horario, null = False, on_delete = models.CASCADE, default = 1)
 
     Cedula_manual = models.CharField(max_length = 12)
 
     """ Atributos necesarios para llevar registro de actualizacions y soft delete sobre la base de datos """
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    deleted_at = models.DateTimeField(null=True,blank=True)
 
 class Factura(models.Model):
 

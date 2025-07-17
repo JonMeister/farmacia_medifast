@@ -1,4 +1,99 @@
 
+
+from rest_framework import viewsets, status
+from rest_framework.response import Response
+from apps.tickets.models import (Caja, Servicio, Horario, Turno, Factura)
+from apps.tickets.serializers import (CajaSerializer, ServicioSerializer, HorarioSerializer, TurnoSerializer, FacturaSerializers)
+from apps.users.models import Cliente
+
+
+class CajaViewSet(viewsets.ModelViewSet):
+
+    queryset = Caja.objects.all()
+    serializer_class = CajaSerializer
+
+
+class ServicioViewSet(viewsets.ModelViewSet):
+
+    queryset = Servicio.objects.filter(Estado = True)
+    serializer_class = ServicioSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        
+        servicio = self.get_object()
+        servicio.Estado = False
+        servicio.save()
+        return Response({'message':'Servicio Deshabilitado'}, status  = status.HTTP_204_NO_CONTENT)
+    
+class HorarioViewSet(viewsets.ModelViewSet):
+
+    queryset = Horario.objects.all()
+    serializer_class = HorarioSerializer
+
+
+class TurnoViewSet(viewsets.ModelViewSet):
+
+    queryset = Turno.objects.all()
+    serializer_class = TurnoSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        return Response({'detail': 'No se permite eliminar Turnos.'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
+    def perform_create(self, serializer):
+        cedula = self.request.data.get('Cedula_manual')
+        try:
+            cliente = Cliente.objects.get(ID_Usuario__cc=cedula)
+        except Cliente.DoesNotExist:
+            cliente = Cliente.objects.get(pk=1)  # cliente por defecto
+
+        serializer.save(ID_Cliente=cliente)
+    
+
+class FacturaViewSet(viewsets.ModelViewSet):
+
+    queryset = Factura.objects.all()
+    serializer_class = FacturaSerializers
+
+    def destroy(self, request, *args, **kwargs):
+        return Response({'detail': 'No se permite eliminar Facturas.'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 """
 from rest_framework import viewsets
 from rest_framework.response import Response

@@ -54,11 +54,12 @@ class obtener_creacion_actualizacion_cliente(serializers.ModelSerializer):
         model = Cliente
         fields = ['created_at','updated_at'] 
 
-class admin_password(serializers.ModelSerializer):
-    class Meta:
-        model = Administrador
-    #cc = serializers.IntegerField(min_value=100000, max_value=9999999999)
-    #neva_password = serializers.CharField(write_only=True, min_length=6)
+class admin_password(serializers.Serializer):
+    #class Meta:
+        #model = Administrador
+    cc = serializers.IntegerField(min_value=100000, max_value=9999999999)
+    antigua_password = serializers.CharField(write_only=True, min_length=6)
+    nueva_password = serializers.CharField(write_only=True, min_length=6)
 
 class cc_client(serializers.Serializer):
     # the parameter it is an identification by the person
