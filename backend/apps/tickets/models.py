@@ -13,7 +13,7 @@ por lógica de negocio y seguridad de la información.
  """
 class Servicio(models.Model):
 
-    Nombre = models.CharField(max_length = 100)
+    Nombre = models.CharField(max_length = 100, unique = True)
     Prioridad = models.IntegerField()
     Estado = models.BooleanField(default = True) # permite saber si el servicio esta deshabilitado o habilitado
 

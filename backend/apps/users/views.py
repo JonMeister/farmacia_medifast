@@ -11,6 +11,7 @@ from .serializers import (cc_client, admin_password, obtener_creacion_actualizac
                           obtener_creacion_actualizacion_administrador, ClienteSerializer, 
                           UserSerializer, RolSerializer, AdministradorSerializer, EmpleadoSerializer)
 from apps.tickets.models import Turno
+from apps.tickets.serializers import Turnos_de_un_cliente
 
 class EmpleadoViewSet(viewsets.ModelViewSet):
     

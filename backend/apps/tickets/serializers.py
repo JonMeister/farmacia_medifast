@@ -3,6 +3,14 @@ from .models import Turno, Caja, Servicio, Horario, Factura
 from apps.users.models import Cliente
 from apps.users.serializers import ClienteSerializer
 
+class IDTurno(serializers.Serializer):
+    id = serializers.IntegerField(min_value=100000, max_value=9999999999)
+
+class IDServicio(serializers.Serializer):
+    id = serializers.IntegerField(min_value=100000, max_value=9999999999)
+
+class NameServicio(serializers.Serializer):
+    name = serializers.CharField(max_length = 100)
 
 class HorarioSerializer(serializers.ModelSerializer):
     class Meta:
@@ -15,7 +23,6 @@ class CajaSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ServicioSerializer(serializers.ModelSerializer):
-    #estado_servicio = 
     class Meta:
         model = Servicio
         fields = '__all__'
@@ -25,17 +32,14 @@ class FacturaSerializers(serializers.ModelSerializer):
         model = Factura
         fields = '__all__'
 
-
 class Turnos_de_un_cliente(serializers.ModelSerializer):
 
     ID_Caja = CajaSerializer()
     ID_Servicio = ServicioSerializer()
-    ID_Horario = HorarioSerializer()
-    ID_Cliente = ClienteSerializer()
 
     class Meta:
         model = Turno
-        fields = ['ID_Caja','ID_Servicio','ID_Horario','ID_Cliente','Cedula_manual','created_at','updated_at','deleted_at']
+        fields = ['ID_Caja','ID_Servicio','Cedula_manual','created_at','updated_at','deleted_at']
 
 class TurnoSerializer(serializers.ModelSerializer):
 
