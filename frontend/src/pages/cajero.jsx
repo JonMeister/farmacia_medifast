@@ -1,257 +1,239 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-
-// Datos estáticos para simular usuarios en cola (nuevos 5 usuarios)
-const USUARIOS_COLA_INICIAL = [
-  {
-    id: 1,
-    nombre: "Juan",
-    apellido: "Pérez",
-    turno: "A001",
-    servicio: "Medicamentos",
-    prioridad: false,
-  },
-  {
-    id: 2,
-    nombre: "María",
-    apellido: "López",
-    turno: "A002",
-    servicio: "Medicamentos",
-    prioridad: true,
-  },
-  {
-    id: 3,
-    nombre: "Carlos",
-    apellido: "González",
-    turno: "A003",
-    servicio: "Consulta",
-    prioridad: false,
-  },
-  {
-    id: 4,
-    nombre: "Ana",
-    apellido: "Martínez",
-    turno: "A004",
-    servicio: "Medicamentos",
-    prioridad: false,
-  },
-  {
-    id: 5,
-    nombre: "Pedro",
-    apellido: "Rodríguez",
-    turno: "A005",
-    servicio: "Consulta",
-    prioridad: true,
-  },
-  // Nuevos usuarios adicionales
-  {
-    id: 6,
-    nombre: "Luisa",
-    apellido: "Ramírez",
-    turno: "A006",
-    servicio: "Medicamentos",
-    prioridad: false,
-  },
-  {
-    id: 7,
-    nombre: "Roberto",
-    apellido: "Fernández",
-    turno: "A007",
-    servicio: "Consulta",
-    prioridad: true,
-  },
-  {
-    id: 8,
-    nombre: "Sofia",
-    apellido: "Torres",
-    turno: "A008",
-    servicio: "Medicamentos",
-    prioridad: false,
-  },
-  {
-    id: 9,
-    nombre: "Miguel",
-    apellido: "Díaz",
-    turno: "A009",
-    servicio: "Medicamentos",
-    prioridad: false,
-  },
-  {
-    id: 10,
-    nombre: "Carmen",
-    apellido: "Vargas",
-    turno: "A010",
-    servicio: "Consulta",
-    prioridad: true,
-  },
-];
-
-// Lista estática de productos con indicador de si requieren orden médica
-const PRODUCTOS = [
-  {
-    id: 1,
-    nombre: "Paracetamol",
-    marca: "Genfar",
-    tipo: "Analgésico",
-    precio: 5000,
-    descuento: 0,
-    requireOrden: false,
-  },
-  {
-    id: 2,
-    nombre: "Ibuprofeno",
-    marca: "MK",
-    tipo: "Antiinflamatorio",
-    precio: 8000,
-    descuento: 1000,
-    requireOrden: false,
-  },
-  {
-    id: 3,
-    nombre: "Omeprazol",
-    marca: "La Santé",
-    tipo: "Gastro",
-    precio: 12000,
-    descuento: 2000,
-    requireOrden: false,
-  },
-  {
-    id: 4,
-    nombre: "Loratadina",
-    marca: "Bayer",
-    tipo: "Antialérgico",
-    precio: 7500,
-    descuento: 0,
-    requireOrden: false,
-  },
-  {
-    id: 5,
-    nombre: "Amoxicilina",
-    marca: "Genfar",
-    tipo: "Antibiótico",
-    precio: 15000,
-    descuento: 3000,
-    requireOrden: true,
-  },
-  {
-    id: 6,
-    nombre: "Aspirina",
-    marca: "Bayer",
-    tipo: "Analgésico",
-    precio: 4000,
-    descuento: 500,
-    requireOrden: false,
-  },
-  {
-    id: 7,
-    nombre: "Losartán",
-    marca: "MK",
-    tipo: "Antihipertensivo",
-    precio: 9000,
-    descuento: 0,
-    requireOrden: true,
-  },
-  {
-    id: 8,
-    nombre: "Metformina",
-    marca: "La Santé",
-    tipo: "Antidiabético",
-    precio: 10000,
-    descuento: 1500,
-    requireOrden: true,
-  },
-  {
-    id: 9,
-    nombre: "Simvastatina",
-    marca: "Genfar",
-    tipo: "Hipolipemiante",
-    precio: 14000,
-    descuento: 2000,
-    requireOrden: true,
-  },
-  {
-    id: 10,
-    nombre: "Diclofenaco",
-    marca: "MK",
-    tipo: "Antiinflamatorio",
-    precio: 6500,
-    descuento: 0,
-    requireOrden: false,
-  },
-];
+import {
+  getMiCajaInfo,
+  atenderSiguienteTurno,
+  finalizarTurno,
+  cancelarTurnoActual,
+  toggleCajaEstado,
+  getProductos,
+} from "../api/cajero.api";
 
 export default function Cajero() {
-  // Estados
-  const [usuariosCola, setUsuariosCola] = useState(USUARIOS_COLA_INICIAL);
+  const navigate = useNavigate();
+
+  // Estados principales
+  const [cajaInfo, setCajaInfo] = useState(null);
   const [usuarioActual, setUsuarioActual] = useState(null);
-  const [cajaActiva, setCajaActiva] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [usuariosCola, setUsuariosCola] = useState([]);
+
+  // Estados de UI
   const [mostrarOpciones, setMostrarOpciones] = useState(false);
   const [mostrarProductos, setMostrarProductos] = useState(false);
-  const [carrito, setCarrito] = useState([]);
-  const [totalCompra, setTotalCompra] = useState(0);
-  const [busqueda, setBusqueda] = useState("");
-  const [productosFiltrados, setProductosFiltrados] = useState(PRODUCTOS);
-  const [ordenRecibida, setOrdenRecibida] = useState(false);
-
-  // Nuevos estados
   const [seleccionTipoAtencion, setSeleccionTipoAtencion] = useState(false);
   const [confirmarCancelar, setConfirmarCancelar] = useState(false);
 
-  // Datos del cajero (simulados)
-  const cajero = {
-    nombre: "Laura González",
-    cedula: "1098765432",
-    caja: 3,
-  };
+  // Estados de productos y carrito
+  const [productos, setProductos] = useState([]);
+  const [carrito, setCarrito] = useState([]);
+  const [totalCompra, setTotalCompra] = useState(0);
+  const [busqueda, setBusqueda] = useState("");
+  const [productosFiltrados, setProductosFiltrados] = useState([]);
+  const [ordenRecibida, setOrdenRecibida] = useState(false);
 
-  // Filtrar productos según la búsqueda y si requieren orden médica
+  // Datos del cajero (se cargan desde cajaInfo)
+  const cajero = cajaInfo
+    ? {
+        nombre:
+          cajaInfo.usuario?.first_name && cajaInfo.usuario?.last_name
+            ? `${cajaInfo.usuario.first_name} ${cajaInfo.usuario.last_name}`
+            : cajaInfo.usuario?.username || "Usuario",
+        cedula: cajaInfo.usuario?.cc || "N/A",
+        caja: (() => {
+          const cajaData = cajaInfo.caja;
+          if (!cajaData) return "N/A";
+
+          // Debug: verificar si el backend envía el campo nombre
+          console.log("=== DEBUG NOMBRE CAJA ===");
+          console.log("cajaData completo:", cajaData);
+          console.log("cajaData.nombre:", cajaData.nombre);
+
+          // Usar el campo nombre directamente del backend
+          if (cajaData.nombre) {
+            return cajaData.nombre;
+          }
+
+          // Si no hay nombre, es un error del backend
+          console.error(
+            "ERROR: El backend no está enviando el campo 'nombre' de la caja"
+          );
+          return `Caja ${cajaData.id || "?"}`;
+        })(),
+      }
+    : {
+        nombre: "Cargando...",
+        cedula: "...",
+        caja: "...",
+      };
+
+  // Estado de caja basado en cajaInfo
+  const cajaActiva = cajaInfo?.caja?.Estado || false;
+
+  // Verificar autenticación
   useEffect(() => {
-    let productos = PRODUCTOS;
+    const authToken = localStorage.getItem("authToken");
+    const isCajero = localStorage.getItem("is_cajero") === "true";
+    const rol = localStorage.getItem("rol");
+
+    if (!authToken || (!isCajero && rol !== "administrador")) {
+      navigate("/");
+      return;
+    }
+
+    cargarDatosCaja();
+    cargarProductos();
+
+    // Actualizar datos cada 10 segundos para mantener la cola actualizada
+    const interval = setInterval(cargarDatosCaja, 10000);
+    return () => clearInterval(interval);
+  }, [navigate]);
+
+  // Filtrar productos según búsqueda y orden médica
+  useEffect(() => {
+    let productosDisponibles = productos;
 
     // Si no hay orden médica, filtrar productos que la requieren
     if (!ordenRecibida) {
-      productos = productos.filter((producto) => !producto.requireOrden);
+      productosDisponibles = productosDisponibles.filter(
+        (producto) => !producto.requiere_orden_medica
+      );
     }
 
     // Aplicar filtro de búsqueda
     setProductosFiltrados(
-      productos.filter(
+      productosDisponibles.filter(
         (producto) =>
-          producto.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-          producto.marca.toLowerCase().includes(busqueda.toLowerCase()) ||
-          producto.tipo.toLowerCase().includes(busqueda.toLowerCase())
+          producto.Nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+          producto.Marca.toLowerCase().includes(busqueda.toLowerCase()) ||
+          producto.Tipo.toLowerCase().includes(busqueda.toLowerCase())
       )
     );
-  }, [busqueda, ordenRecibida]);
+  }, [busqueda, ordenRecibida, productos]);
 
   // Calcular total de la compra
   useEffect(() => {
     const total = carrito.reduce((sum, item) => {
-      return sum + (item.precio - item.descuento) * item.cantidad;
+      return sum + (item.Precio - item.Descuento) * item.cantidad;
     }, 0);
     setTotalCompra(total);
   }, [carrito]);
 
-  // Atender siguiente usuario - MODIFICADO para no eliminar de la cola
-  const atenderSiguiente = () => {
-    if (usuariosCola.length === 0) {
-      alert("No hay más usuarios en cola");
+  const cargarDatosCaja = async () => {
+    try {
+      setLoading(true);
+      const data = await getMiCajaInfo();
+      setCajaInfo(data);
+
+      // Debug: Mostrar la estructura de datos de la caja
+      console.log("Datos de caja recibidos:", data);
+      console.log("Información específica de caja:", data.caja);
+      console.log("Todos los campos de la caja:", Object.keys(data.caja || {}));
+      console.log("ID de la caja:", data.caja?.id);
+      console.log("Posibles nombres:", {
+        nombre: data.caja?.nombre,
+        Nombre: data.caja?.Nombre,
+        name: data.caja?.name,
+        Name: data.caja?.Name,
+        letra: data.caja?.letra,
+        Letra: data.caja?.Letra,
+        descripcion: data.caja?.descripcion,
+        Descripcion: data.caja?.Descripcion,
+      });
+
+      // Actualizar cola de usuarios desde el backend
+      if (data.cola_turnos) {
+        setUsuariosCola(
+          data.cola_turnos.map((turno) => ({
+            id: turno.id,
+            nombre:
+              turno.ID_Cliente_data?.ID_Usuario_data?.first_name || "Cliente",
+            apellido: turno.ID_Cliente_data?.ID_Usuario_data?.last_name || "",
+            turno: turno.numero_turno || `T${turno.id}`,
+            servicio: turno.ID_Servicio_data?.Nombre || "Servicio",
+            prioridad: turno.es_prioritario || false,
+            cedula:
+              turno.Cedula_manual ||
+              turno.ID_Cliente_data?.ID_Usuario_data?.cc ||
+              "N/A",
+          }))
+        );
+      }
+
+      // Si hay un turno en atención, cargarlo
+      if (data.turno_actual) {
+        const turnoActual = data.turno_actual;
+        setUsuarioActual({
+          id: turnoActual.id,
+          nombre:
+            turnoActual.ID_Cliente_data?.ID_Usuario_data?.first_name ||
+            "Cliente",
+          apellido:
+            turnoActual.ID_Cliente_data?.ID_Usuario_data?.last_name || "",
+          turno: turnoActual.numero_turno || `T${turnoActual.id}`,
+          servicio: turnoActual.ID_Servicio_data?.Nombre || "Servicio",
+          prioridad: turnoActual.es_prioritario || false,
+          cedula:
+            turnoActual.Cedula_manual ||
+            turnoActual.ID_Cliente_data?.ID_Usuario_data?.cc ||
+            "N/A",
+        });
+        setMostrarOpciones(true);
+      } else {
+        setUsuarioActual(null);
+        setMostrarOpciones(false);
+        setMostrarProductos(false);
+        setSeleccionTipoAtencion(false);
+      }
+
+      setError("");
+    } catch (error) {
+      setError(
+        error.response?.data?.error || "Error al cargar información de caja"
+      );
+      console.error("Error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cargarProductos = async () => {
+    try {
+      const productosData = await getProductos();
+      setProductos(productosData);
+    } catch (error) {
+      console.error("Error al cargar productos:", error);
+    }
+  };
+
+  // Atender siguiente usuario - integrado con backend
+  const atenderSiguiente = async () => {
+    if (!cajaActiva) {
+      alert("La caja debe estar activa para atender usuarios");
       return;
     }
 
-    // Tomar el primer usuario de la cola
-    const siguiente = usuariosCola[0];
-    setUsuarioActual(siguiente);
+    try {
+      const response = await atenderSiguienteTurno();
 
-    // Ya no removemos al usuario de la cola aquí
-    // Solo lo marcaremos como en atención en selección de tipo de atención
-
-    setSeleccionTipoAtencion(true);
-    setMostrarOpciones(false);
-    setMostrarProductos(false);
-    setCarrito([]);
-    setOrdenRecibida(false);
+      if (response.success) {
+        // Recargar datos para obtener el usuario en atención
+        await cargarDatosCaja();
+        setSeleccionTipoAtencion(true);
+        setMostrarOpciones(false);
+        setMostrarProductos(false);
+        setCarrito([]);
+        setOrdenRecibida(false);
+      } else {
+        alert(response.message || "No hay usuarios en cola para atender");
+      }
+    } catch (error) {
+      console.error("Error al atender siguiente:", error);
+      alert(error.response?.data?.error || "Error al atender siguiente turno");
+    }
   };
 
   // Método para atender con orden médica
@@ -278,15 +260,12 @@ export default function Cajero() {
   // Volver al paso anterior
   const volverAtras = () => {
     if (mostrarProductos) {
-      // Si estamos en selección de productos, volver a opciones
       setMostrarProductos(false);
     } else if (mostrarOpciones) {
-      // Si estamos en opciones, volver a selección de tipo de atención
       setMostrarOpciones(false);
       setSeleccionTipoAtencion(true);
     } else if (seleccionTipoAtencion) {
-      // Si estamos en selección de tipo, volver a pantalla inicial
-      cancelarAtencion();
+      confirmarCancelarAtencion();
     }
   };
 
@@ -295,24 +274,30 @@ export default function Cajero() {
     setConfirmarCancelar(true);
   };
 
-  // Cancelar atención
-  const cancelarAtencion = () => {
-    setUsuarioActual(null);
-    setMostrarOpciones(false);
-    setMostrarProductos(false);
-    setSeleccionTipoAtencion(false);
-    setOrdenRecibida(false);
-    setCarrito([]);
-    setConfirmarCancelar(false);
+  // Cancelar atención - integrado con backend
+  const handleCancelarAtencion = async () => {
+    try {
+      await cancelarTurnoActual("Cancelado por cajero");
+      await cargarDatosCaja(); // Recargar para actualizar el estado
+      setConfirmarCancelar(false);
+    } catch (error) {
+      console.error("Error al cancelar turno:", error);
+      alert(error.response?.data?.error || "Error al cancelar turno");
+    }
   };
 
-  // Desactivar/activar caja
-  const toggleCaja = () => {
-    setCajaActiva(!cajaActiva);
-    if (cajaActiva) {
-      alert("Caja desactivada");
-    } else {
-      alert("Caja activada");
+  // Desactivar/activar caja - integrado con backend
+  const toggleCaja = async () => {
+    try {
+      const response = await toggleCajaEstado();
+
+      if (response.success) {
+        await cargarDatosCaja(); // Recargar para actualizar el estado
+        alert(response.message);
+      }
+    } catch (error) {
+      console.error("Error al cambiar estado de caja:", error);
+      alert(error.response?.data?.error || "Error al cambiar estado de caja");
     }
   };
 
@@ -321,21 +306,18 @@ export default function Cajero() {
     alert("Se ha solicitado ayuda. Un supervisor acudirá pronto.");
   };
 
-  // Agregar producto al carrito - MODIFICADO para validar requisitos de orden
+  // Agregar producto al carrito
   const agregarProducto = (producto) => {
-    // Verificar si el producto requiere orden médica
-    if (producto.requireOrden && !ordenRecibida) {
+    if (producto.requiere_orden_medica && !ordenRecibida) {
       alert(
         "Este producto requiere orden médica. No puede ser vendido sin receta."
       );
       return;
     }
 
-    // Verificar si ya existe en el carrito
     const existeEnCarrito = carrito.find((item) => item.id === producto.id);
 
     if (existeEnCarrito) {
-      // Incrementar cantidad
       setCarrito(
         carrito.map((item) =>
           item.id === producto.id
@@ -344,7 +326,6 @@ export default function Cajero() {
         )
       );
     } else {
-      // Agregar nuevo producto con cantidad 1
       setCarrito([...carrito, { ...producto, cantidad: 1 }]);
     }
   };
@@ -352,10 +333,8 @@ export default function Cajero() {
   // Actualizar cantidad de un producto
   const actualizarCantidad = (id, cantidad) => {
     if (cantidad <= 0) {
-      // Eliminar producto si cantidad es 0 o negativa
       setCarrito(carrito.filter((item) => item.id !== id));
     } else {
-      // Actualizar cantidad
       setCarrito(
         carrito.map((item) => (item.id === id ? { ...item, cantidad } : item))
       );
@@ -367,172 +346,200 @@ export default function Cajero() {
     setCarrito(carrito.filter((item) => item.id !== id));
   };
 
-  // Generar factura y finalizar compra - MODIFICADO para remover usuario de la cola
-  const finalizarCompra = () => {
+  // Generar factura y finalizar compra - integrado con backend
+  const finalizarCompra = async () => {
     if (carrito.length === 0) {
       alert("No hay productos en el carrito");
       return;
     }
 
-    // Crear factura
-    const factura = {
-      fecha: new Date().toLocaleString(),
-      cajero: cajero.nombre,
-      cliente: `${usuarioActual.nombre} ${usuarioActual.apellido}`,
-      productos: carrito,
-      total: totalCompra,
-      conOrdenMedica: ordenRecibida,
-    };
-
-    // Generar PDF
-    generarPDF(factura);
-
-    // MODIFICADO: Solo ahora removemos al usuario de la cola
-    if (usuarioActual) {
-      setUsuariosCola((prev) =>
-        prev.filter((user) => user.id !== usuarioActual.id)
-      );
-    }
-
-    // Reiniciar estado
-    setUsuarioActual(null);
-    setMostrarOpciones(false);
-    setMostrarProductos(false);
-    setCarrito([]);
-    setOrdenRecibida(false);
-    setSeleccionTipoAtencion(false);
-    setConfirmarCancelar(false);
-
-    alert("Compra finalizada. Se ha generado la factura.");
-  };
-
-  // Función generarPDF modificada
-  const generarPDF = (factura) => {
-    // Crear un nuevo documento PDF
-    const doc = new jsPDF();
-
-    // Título
-    doc.setFontSize(20);
-    doc.text("MEDIFAST - FACTURA", 105, 20, { align: "center" });
-
-    // Información factura
-    doc.setFontSize(12);
-    doc.text(`Fecha: ${factura.fecha}`, 15, 40);
-    doc.text(`Cajero: ${factura.cajero}`, 15, 50);
-    doc.text(`Cliente: ${factura.cliente}`, 15, 60);
-    doc.text(
-      `Tipo: ${
-        factura.conOrdenMedica ? "Con orden médica" : "Sin orden médica"
-      }`,
-      15,
-      70
-    );
-
-    // Usar autoTable como plugin
-    autoTable(doc, {
-      head: [
-        ["Producto", "Marca", "Precio", "Descuento", "Cantidad", "Subtotal"],
-      ],
-      body: factura.productos.map((producto) => {
-        const subtotal =
-          (producto.precio - producto.descuento) * producto.cantidad;
-        return [
-          producto.nombre,
-          producto.marca,
-          `$${producto.precio.toLocaleString()}`,
-          `$${producto.descuento.toLocaleString()}`,
-          producto.cantidad,
-          `$${subtotal.toLocaleString()}`,
-        ];
-      }),
-      startY: 80,
-      theme: "grid",
-      styles: {
-        fontSize: 10,
-        cellPadding: 3,
-      },
-    });
-
-    // Total
-    const finalY = doc.lastAutoTable.finalY || 80;
-    doc.text(`Total: $${factura.total.toLocaleString()}`, 15, finalY + 20);
-
-    // Guardar con prefijo para simular ubicación en /src/facturas/
-    const fileName = `factura_${factura.cliente.replace(
-      /\s+/g,
-      "_"
-    )}_${new Date().getTime()}.pdf`;
-
     try {
-      // Log para desarrollo
-      console.log(`Guardando factura: /src/facturas/${fileName}`);
-
-      // Guardar el archivo en el cliente
-      doc.save(fileName);
-
-      // Crear objeto para base de datos
+      // Crear factura en el backend
       const facturaData = {
-        id: new Date().getTime(),
-        fecha: factura.fecha,
-        cajero: factura.cajero,
-        cliente: factura.cliente,
-        total: factura.total,
-        conOrdenMedica: factura.conOrdenMedica,
-        productos: factura.productos.map((p) => ({
-          id: p.id,
-          nombre: p.nombre,
-          cantidad: p.cantidad,
-          precio: p.precio,
-          descuento: p.descuento,
-          requireOrden: p.requireOrden || false,
+        productos: carrito.map((item) => ({
+          id: item.id,
+          nombre: item.Nombre,
+          marca: item.Marca,
+          cantidad: item.cantidad,
+          precio: item.Precio,
+          descuento: item.Descuento,
+          requireOrden: item.requiere_orden_medica || false,
         })),
+        total: totalCompra,
       };
 
-      // Guardar en localStorage para simulación de persistencia
-      const facturas = JSON.parse(localStorage.getItem("facturas") || "[]");
-      facturas.push(facturaData);
-      localStorage.setItem("facturas", JSON.stringify(facturas));
-
-      console.log("Factura generada con éxito y guardada localmente");
-    } catch (error) {
-      console.error("Error al generar factura:", error);
-      alert("Error al generar la factura");
-    }
-  };
-
-  // Nueva función para pasar al siguiente turno - MODIFICADO para eliminar usuario
-  const pasarSiguienteTurno = () => {
-    if (usuarioActual) {
-      // Ahora sí eliminamos al usuario de la cola
-      setUsuariosCola((prev) =>
-        prev.filter((user) => user.id !== usuarioActual.id)
+      const response = await finalizarTurno(
+        facturaData.productos,
+        facturaData.total
       );
-    }
 
-    // Liberar al usuario actual
-    setUsuarioActual(null);
-    setSeleccionTipoAtencion(false);
+      if (response.success) {
+        // Crear factura para el PDF
+        const factura = {
+          fecha: new Date().toLocaleString(),
+          cajero: cajero.nombre,
+          cliente: `${usuarioActual.nombre} ${usuarioActual.apellido}`,
+          cedula: usuarioActual.cedula,
+          turno: usuarioActual.turno,
+          productos: carrito,
+          total: totalCompra,
+          conOrdenMedica: ordenRecibida,
+          facturaId: response.factura?.id || Date.now(),
+        };
 
-    // Verificar si hay más usuarios en cola
-    if (usuariosCola.length > 1) {
-      // > 1 porque no hemos actualizado el estado aún
-      // Llamar a atender siguiente automáticamente
-      setTimeout(() => {
-        atenderSiguiente();
-      }, 300);
+        // Generar PDF
+        generarPDF(factura);
+
+        // Recargar datos para actualizar el estado
+        await cargarDatosCaja();
+
+        alert("Compra finalizada exitosamente. Se ha generado la factura.");
+      }
+    } catch (error) {
+      console.error("Error al finalizar compra:", error);
+      alert(error.response?.data?.error || "Error al finalizar la compra");
     }
   };
 
-  // Nueva función para volver a opciones principales
+  // Función para generar PDF de la factura
+  const generarPDF = (factura) => {
+    try {
+      const doc = new jsPDF();
+
+      // Título
+      doc.setFontSize(20);
+      doc.text("MEDIFAST - FACTURA", 105, 20, { align: "center" });
+
+      // Información de la factura
+      doc.setFontSize(12);
+      doc.text(`Factura No: ${factura.facturaId}`, 15, 40);
+      doc.text(`Fecha: ${factura.fecha}`, 15, 50);
+      doc.text(`Cajero: ${factura.cajero}`, 15, 60);
+      doc.text(`Cliente: ${factura.cliente}`, 15, 70);
+      doc.text(`Cédula: ${factura.cedula}`, 15, 80);
+      doc.text(`Turno: ${factura.turno}`, 15, 90);
+      doc.text(
+        `Tipo: ${
+          factura.conOrdenMedica ? "Con orden médica" : "Sin orden médica"
+        }`,
+        15,
+        100
+      );
+
+      // Tabla de productos
+      autoTable(doc, {
+        head: [
+          ["Producto", "Marca", "Precio", "Descuento", "Cantidad", "Subtotal"],
+        ],
+        body: factura.productos.map((producto) => {
+          const subtotal =
+            (producto.Precio - producto.Descuento) * producto.cantidad;
+          return [
+            producto.Nombre,
+            producto.Marca,
+            `$${producto.Precio.toLocaleString()}`,
+            `$${producto.Descuento.toLocaleString()}`,
+            producto.cantidad,
+            `$${subtotal.toLocaleString()}`,
+          ];
+        }),
+        startY: 110,
+        theme: "grid",
+        styles: {
+          fontSize: 10,
+          cellPadding: 3,
+        },
+      });
+
+      // Total
+      const finalY = doc.lastAutoTable.finalY || 110;
+      doc.setFontSize(14);
+      doc.text(`TOTAL: $${factura.total.toLocaleString()}`, 15, finalY + 20);
+
+      // Información adicional
+      doc.setFontSize(10);
+      doc.text("Gracias por su compra", 105, finalY + 40, { align: "center" });
+      doc.text("MEDIFAST - Farmacia de confianza", 105, finalY + 50, {
+        align: "center",
+      });
+
+      // Guardar PDF
+      const fileName = `factura_${factura.facturaId}_${factura.cliente.replace(
+        /\s+/g,
+        "_"
+      )}.pdf`;
+      doc.save(fileName);
+
+      console.log("Factura PDF generada exitosamente");
+    } catch (error) {
+      console.error("Error al generar PDF:", error);
+      alert("Error al generar la factura PDF");
+    }
+  };
+
+  // Pasar al siguiente turno sin atender
+  const pasarSiguienteTurno = async () => {
+    try {
+      await cancelarTurnoActual("Turno pasado sin atención");
+      await cargarDatosCaja();
+
+      // Si hay más usuarios en cola, atender automáticamente
+      setTimeout(() => {
+        if (usuariosCola.length > 0) {
+          atenderSiguiente();
+        }
+      }, 500);
+    } catch (error) {
+      console.error("Error al pasar turno:", error);
+      alert(error.response?.data?.error || "Error al pasar al siguiente turno");
+    }
+  };
+
+  // Volver a opciones principales
   const volverAOpciones = () => {
-    // Cancelar la atención pero sin mostrar confirmación
-    setUsuarioActual(null);
     setMostrarOpciones(false);
     setMostrarProductos(false);
     setSeleccionTipoAtencion(false);
     setOrdenRecibida(false);
     setCarrito([]);
   };
+
+  // Solicitar permisos de notificación
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  if (loading && !cajaInfo) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando información de caja...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !cajaInfo) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            <h3 className="font-bold">Error al cargar información</h3>
+            <p>{error}</p>
+            <button
+              onClick={cargarDatosCaja}
+              className="mt-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
+            >
+              Reintentar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-4 md:p-6">
@@ -554,10 +561,10 @@ export default function Cajero() {
                   key={usuario.id}
                   className={`p-3 rounded-lg ${
                     usuarioActual && usuario.id === usuarioActual.id
-                      ? "bg-green-100 border border-green-400" // Resaltar usuario en atención
+                      ? "bg-green-100 border border-green-400"
                       : index === 0 && !usuarioActual
-                      ? "bg-green-50 border border-green-300" // Siguiente sin atención actual
-                      : "bg-gray-50 border border-gray-200" // Resto de usuarios
+                      ? "bg-green-50 border border-green-300"
+                      : "bg-gray-50 border border-gray-200"
                   }`}
                 >
                   <div className="flex justify-between items-center">
@@ -594,7 +601,7 @@ export default function Cajero() {
         {/* Sección Central - Información de cajero y controles */}
         <div className="lg:col-span-3 bg-white rounded-xl shadow p-4 md:p-6">
           <h2 className="text-xl font-semibold mb-4 border-b pb-2">
-            Información de Cajero {cajero.caja}
+            Información de Cajero - Caja {cajero.caja}
           </h2>
           <div className="mb-6">
             <div className="flex justify-center mb-4">
@@ -616,6 +623,7 @@ export default function Cajero() {
               </span>
             </p>
           </div>
+
           {/* Pantalla inicial - Sin usuario en atención activa */}
           {!seleccionTipoAtencion && !mostrarOpciones && !confirmarCancelar && (
             <div className="space-y-3">
@@ -650,6 +658,7 @@ export default function Cajero() {
               </button>
             </div>
           )}
+
           {/* Confirmación de cancelar atención */}
           {confirmarCancelar && (
             <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-200">
@@ -659,7 +668,7 @@ export default function Cajero() {
 
               <div className="grid grid-cols-2 gap-3">
                 <button
-                  onClick={cancelarAtencion}
+                  onClick={handleCancelarAtencion}
                   className="py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium"
                 >
                   Sí, Cancelar
@@ -713,6 +722,7 @@ export default function Cajero() {
               </div>
             </div>
           )}
+
           {/* Información del usuario en atención */}
           {usuarioActual && mostrarOpciones && !confirmarCancelar && (
             <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -822,33 +832,33 @@ export default function Cajero() {
                     className="border rounded-lg p-3 hover:bg-gray-50 cursor-pointer relative"
                     onClick={() => agregarProducto(producto)}
                   >
-                    {producto.requireOrden && (
+                    {producto.requiere_orden_medica && (
                       <span className="absolute top-2 right-2 text-xs bg-yellow-100 text-yellow-800 px-1 py-0.5 rounded">
                         Requiere orden
                       </span>
                     )}
                     <div className="flex justify-between">
-                      <span className="font-medium">{producto.nombre}</span>
+                      <span className="font-medium">{producto.Nombre}</span>
                       <span className="text-sm text-gray-500">
-                        {producto.marca}
+                        {producto.Marca}
                       </span>
                     </div>
-                    <div className="text-sm text-gray-600">{producto.tipo}</div>
+                    <div className="text-sm text-gray-600">{producto.Tipo}</div>
                     <div className="flex justify-between mt-1">
                       <span
                         className={`${
-                          producto.descuento > 0
+                          producto.Descuento > 0
                             ? "line-through text-gray-400"
                             : ""
                         }`}
                       >
-                        ${producto.precio.toLocaleString()}
+                        ${producto.Precio.toLocaleString()}
                       </span>
-                      {producto.descuento > 0 && (
+                      {producto.Descuento > 0 && (
                         <span className="font-medium text-green-600">
                           $
                           {(
-                            producto.precio - producto.descuento
+                            producto.Precio - producto.Descuento
                           ).toLocaleString()}
                         </span>
                       )}
@@ -874,15 +884,15 @@ export default function Cajero() {
                           className="flex items-center justify-between p-2 border-b"
                         >
                           <div className="flex-1">
-                            <div className="font-medium">{item.nombre}</div>
+                            <div className="font-medium">{item.Nombre}</div>
                             <div className="text-sm text-gray-600">
-                              {item.marca}
+                              {item.Marca}
                             </div>
                             <div className="text-sm">
-                              ${(item.precio - item.descuento).toLocaleString()}{" "}
+                              ${(item.Precio - item.Descuento).toLocaleString()}{" "}
                               c/u
                             </div>
-                            {item.requireOrden && (
+                            {item.requiere_orden_medica && (
                               <span className="text-xs bg-yellow-100 text-yellow-800 px-1 py-0.5 rounded">
                                 Requiere orden
                               </span>

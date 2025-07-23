@@ -1,36 +1,58 @@
 import { useState, useEffect } from "react";
 import {
   GetAllCajas,
-  GetCajerosDisponibles,
+  GetUsuariosDisponibles,
+  GetTodosLosEmpleados,
   CreateCaja,
   UpdateCaja,
   DeleteCaja,
+  ActivarCaja,
+  DesactivarCaja,
 } from "../api/caja.api";
 
-export default function CajerosView() {
-  const isStaff = localStorage.getItem("is_staff") === "true";
-
-  if (!isStaff) {
-    return <p>No tienes permiso para acceder a esta sección.</p>;
-  }
-
+export default function CajasView() {
   // Estados
   const [cajas, setCajas] = useState([]);
-  const [cajeros, setCajeros] = useState([]);
+  const [usuariosDisponibles, setUsuariosDisponibles] = useState([]);
+  const [todosLosEmpleados, setTodosLosEmpleados] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
-    numero: "",
-    cajero: "",
-    activa: true,
+    nombre: "",
+    ID_Usuario: "",
+    Estado: true,
   });
+
+  // Verificar permisos - solo administradores pueden gestionar cajas
+  const rol = localStorage.getItem("rol");
+  const token = localStorage.getItem("authToken");
 
   // Cargar datos al iniciar
   useEffect(() => {
-    fetchCajas();
-    fetchCajeros();
-  }, []);
+    console.log("Rol del usuario:", rol);
+    console.log("Token disponible:", !!token);
+    console.log("Token value:", token);
+
+    if (rol === "administrador" && token) {
+      fetchCajas();
+      fetchUsuarios();
+      fetchTodosLosEmpleados();
+    } else {
+      console.log("No se cargan datos - rol o token inválido");
+    }
+  }, [rol, token]);
+
+  if (rol !== "administrador") {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p className="text-gray-600">
+          No tienes permiso para acceder a esta sección. Solo administradores
+          pueden gestionar cajas.
+        </p>
+      </div>
+    );
+  }
 
   // Obtener cajas
   const fetchCajas = async () => {
@@ -44,22 +66,54 @@ export default function CajerosView() {
     }
   };
 
-  // Obtener cajeros disponibles
-  const fetchCajeros = async () => {
+  // Obtener usuarios disponibles (solo empleados no asignados)
+  const fetchUsuarios = async () => {
     try {
-      const response = await GetCajerosDisponibles();
-      setCajeros(response.data);
+      console.log("Obteniendo usuarios disponibles...");
+      console.log("Token en localStorage:", localStorage.getItem("authToken"));
+      const response = await GetUsuariosDisponibles();
+      console.log("Usuarios disponibles obtenidos:", response.data);
+      setUsuariosDisponibles(response.data);
     } catch (error) {
-      console.error("Error al cargar cajeros:", error);
+      console.error("Error al cargar usuarios disponibles:", error);
+      console.error("Response status:", error.response?.status);
+      console.error("Response data:", error.response?.data);
+    }
+  };
+
+  // Obtener todos los empleados (para el formulario de edición)
+  const fetchTodosLosEmpleados = async () => {
+    try {
+      console.log("Obteniendo todos los empleados...");
+      const response = await GetTodosLosEmpleados();
+      console.log("Todos los empleados obtenidos:", response.data);
+      setTodosLosEmpleados(response.data);
+    } catch (error) {
+      console.error("Error al cargar todos los empleados:", error);
+      console.error("Response status:", error.response?.status);
+      console.error("Response data:", error.response?.data);
     }
   };
 
   // Manejar cambios en el formulario
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+
+    let finalValue;
+    if (type === "checkbox") {
+      finalValue = checked;
+    } else if (name === "ID_Usuario") {
+      // Para ID_Usuario, mantener como string para el formulario
+      finalValue = value;
+    } else {
+      finalValue = value;
+    }
+
+    console.log(`Campo ${name} cambió a:`, finalValue); // Para debug
+
     setFormData({
       ...formData,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: finalValue,
     });
   };
 
@@ -67,20 +121,21 @@ export default function CajerosView() {
   const handleShowCreateForm = () => {
     setEditingId(null);
     setFormData({
-      numero: "",
-      cajero: "",
-      activa: true,
+      nombre: "",
+      ID_Usuario: "",
+      Estado: true,
     });
     setShowForm(true);
   };
 
   // Mostrar formulario para editar
   const handleShowEditForm = (caja) => {
+    console.log("Editando caja:", caja); // Para debug
     setEditingId(caja.id);
     setFormData({
-      numero: caja.numero,
-      cajero: caja.cajero || "",
-      activa: caja.activa,
+      nombre: caja.nombre || "",
+      ID_Usuario: caja.ID_Usuario ? caja.ID_Usuario.toString() : "",
+      Estado: caja.Estado,
     });
     setShowForm(true);
   };
@@ -94,22 +149,70 @@ export default function CajerosView() {
   // Guardar caja (crear o actualizar)
   const handleSave = async () => {
     try {
+      const dataToSend = {
+        nombre: formData.nombre.trim(),
+        Estado: formData.Estado,
+      };
+
+      // Validar que el nombre no esté vacío
+      if (!dataToSend.nombre) {
+        alert("El nombre de la caja es requerido");
+        return;
+      }
+
+      // Manejar ID_Usuario correctamente
+      if (formData.ID_Usuario === "" || formData.ID_Usuario === null) {
+        dataToSend.ID_Usuario = null;
+      } else {
+        // Convertir a entero para asegurar el tipo correcto
+        dataToSend.ID_Usuario = parseInt(formData.ID_Usuario);
+      }
+
+      console.log("Datos a enviar:", dataToSend); // Para debug
+      console.log("Tipo de ID_Usuario:", typeof dataToSend.ID_Usuario); // Para debug
+
       if (editingId) {
         // Actualizar caja existente
-        await UpdateCaja(editingId, formData);
+        console.log("Actualizando caja ID:", editingId);
+        const response = await UpdateCaja(editingId, dataToSend);
+        console.log("Respuesta del servidor:", response.data);
       } else {
         // Crear nueva caja
-        await CreateCaja(formData);
+        console.log("Creando nueva caja");
+        const response = await CreateCaja(dataToSend);
+        console.log("Respuesta del servidor:", response.data);
       }
       // Recargar datos
       fetchCajas();
-      fetchCajeros();
+      fetchUsuarios();
+      fetchTodosLosEmpleados();
       // Cerrar formulario
       setShowForm(false);
       setEditingId(null);
+      alert("Caja guardada con éxito");
     } catch (error) {
       console.error("Error al guardar caja:", error);
-      alert("Error al guardar la caja");
+      console.error("Response status:", error.response?.status); // Para debug
+      console.error("Response data:", error.response?.data); // Para debug
+
+      let errorMessage = "Error al guardar la caja";
+      if (error.response?.data) {
+        if (error.response.data.nombre) {
+          errorMessage = `Error en nombre: ${error.response.data.nombre.join(
+            ", "
+          )}`;
+        } else if (error.response.data.ID_Usuario) {
+          errorMessage = `Error en usuario: ${error.response.data.ID_Usuario.join(
+            ", "
+          )}`;
+        } else if (error.response.data.detail) {
+          errorMessage = error.response.data.detail;
+        } else if (typeof error.response.data === "object") {
+          errorMessage = JSON.stringify(error.response.data);
+        }
+      }
+
+      alert(errorMessage);
     }
   };
 
@@ -119,12 +222,28 @@ export default function CajerosView() {
       try {
         await DeleteCaja(id);
         fetchCajas();
-        fetchCajeros();
+        fetchUsuarios();
+        fetchTodosLosEmpleados();
         alert("Caja eliminada con éxito");
       } catch (error) {
         console.error("Error al eliminar caja:", error);
         alert("Error al eliminar la caja");
       }
+    }
+  };
+
+  // Activar/Desactivar caja
+  const handleToggleEstado = async (id, estadoActual) => {
+    try {
+      if (estadoActual) {
+        await DesactivarCaja(id);
+      } else {
+        await ActivarCaja(id);
+      }
+      fetchCajas();
+    } catch (error) {
+      console.error("Error al cambiar estado de caja:", error);
+      alert("Error al cambiar el estado de la caja");
     }
   };
 
@@ -159,7 +278,7 @@ export default function CajerosView() {
                 <div
                   key={caja.id}
                   className={`flex items-center border rounded-lg p-4 shadow hover:shadow-md transition ${
-                    !caja.activa ? "bg-gray-100" : "bg-white"
+                    !caja.Estado ? "bg-gray-100" : "bg-white"
                   }`}
                 >
                   {/* Ícono de usuario */}
@@ -173,23 +292,25 @@ export default function CajerosView() {
                   <div className="flex-1 ml-4 w-80">
                     <div className="flex justify-between items-center mb-2">
                       <button className="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded-lg inline-block w-3/4">
-                        Caja {caja.numero}
+                        Caja {caja.nombre || caja.id}
                       </button>
                       <span
                         className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
-                          caja.activa
+                          caja.Estado
                             ? "bg-green-100 text-green-800"
                             : "bg-gray-200 text-gray-800"
                         }`}
                       >
-                        {caja.activa ? "Activa" : "Inactiva"}
+                        {caja.Estado ? "Activa" : "Inactiva"}
                       </span>
                     </div>
 
-                    {/* Nombre del cajero */}
+                    {/* Nombre del usuario */}
                     <div className="font-semibold">Cajero:</div>
                     <div className="mb-3">
-                      {caja.cajero_nombre || "Sin asignar"}
+                      {caja.usuario
+                        ? `${caja.usuario.first_name} ${caja.usuario.last_name}`
+                        : "Sin asignar"}
                     </div>
 
                     {/* Botones de acción */}
@@ -199,6 +320,16 @@ export default function CajerosView() {
                         className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm flex-1"
                       >
                         Editar
+                      </button>
+                      <button
+                        onClick={() => handleToggleEstado(caja.id, caja.Estado)}
+                        className={`${
+                          caja.Estado
+                            ? "bg-yellow-500 hover:bg-yellow-600"
+                            : "bg-green-500 hover:bg-green-600"
+                        } text-white px-3 py-1 rounded text-sm flex-1`}
+                      >
+                        {caja.Estado ? "Desactivar" : "Activar"}
                       </button>
                       <button
                         onClick={() => handleDelete(caja.id)}
@@ -228,13 +359,14 @@ export default function CajerosView() {
             <div className="space-y-4">
               <div>
                 <label className="block mb-1 text-sm font-medium">
-                  Número de Caja
+                  Nombre de la Caja *
                 </label>
                 <input
-                  type="number"
-                  name="numero"
-                  value={formData.numero}
+                  type="text"
+                  name="nombre"
+                  value={formData.nombre}
                   onChange={handleChange}
+                  placeholder="Ej: A, B, C o 1, 2, 3"
                   className="border rounded px-3 py-2 w-full"
                   required
                 />
@@ -242,34 +374,52 @@ export default function CajerosView() {
 
               <div>
                 <label className="block mb-1 text-sm font-medium">
-                  Asignar Cajero
+                  Asignar Empleado (Cajero)
                 </label>
                 <select
-                  name="cajero"
-                  value={formData.cajero}
+                  name="ID_Usuario"
+                  value={formData.ID_Usuario}
                   onChange={handleChange}
                   className="border rounded px-3 py-2 w-full"
                 >
-                  <option value="">-- Seleccionar Cajero --</option>
-                  {cajeros.map((cajero) => (
-                    <option key={cajero.id} value={cajero.id}>
-                      {cajero.first_name} {cajero.last_name}
-                    </option>
-                  ))}
-                  {/* Para mantener el cajero actual en edición, si ya está asignado */}
-                  {editingId &&
-                    formData.cajero &&
-                    !cajeros.some((c) => c.id === formData.cajero) && (
-                      <option value={formData.cajero}>Cajero actual</option>
-                    )}
+                  <option value="">-- Sin asignar --</option>
+                  {/* Mostrar empleados disponibles para crear, todos los empleados para editar */}
+                  {/* DEBUG: Información de empleados */}
+                  {console.log("=== DROPDOWN DEBUG ===")}
+                  {console.log("EditingId:", editingId)}
+                  {console.log(
+                    "UsuariosDisponibles length:",
+                    usuariosDisponibles.length
+                  )}
+                  {console.log(
+                    "UsuariosDisponibles data:",
+                    usuariosDisponibles
+                  )}
+                  {console.log(
+                    "TodosLosEmpleados length:",
+                    todosLosEmpleados.length
+                  )}
+                  {console.log("TodosLosEmpleados data:", todosLosEmpleados)}
+                  {console.log(
+                    "Array a usar:",
+                    editingId ? todosLosEmpleados : usuariosDisponibles
+                  )}
+                  {(editingId ? todosLosEmpleados : usuariosDisponibles).map(
+                    (empleado) => (
+                      <option key={empleado.id} value={empleado.id}>
+                        {empleado.first_name} {empleado.last_name} (CC:{" "}
+                        {empleado.cc})
+                      </option>
+                    )
+                  )}
                 </select>
               </div>
 
               <div className="flex items-center">
                 <input
                   type="checkbox"
-                  name="activa"
-                  checked={formData.activa}
+                  name="Estado"
+                  checked={formData.Estado}
                   onChange={handleChange}
                   className="mr-2"
                 />

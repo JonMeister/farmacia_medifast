@@ -1,10 +1,32 @@
 from django.db import models
-#from apps.users.models import Cliente  # Eliminar la importación de Cajero
 from apps.products.models import Producto
 
 class Caja(models.Model):
+    
+    """ Usuario asignado a la caja (puede ser None si no hay cajero asignado) """
+    ID_Usuario = models.OneToOneField('users.User', on_delete=models.SET_NULL, null=True, blank=True)
+    
+    """ Nombre de la caja para identificación (A, B, C o 1, 2, 3, etc.) """
+    nombre = models.CharField(max_length=10, unique=True, verbose_name='Nombre de la caja')
+    
+    """ Estado de la caja: activa o inactiva """
+    Estado = models.BooleanField(default=True)
+    
+    """ Atributos necesarios para llevar registro de actualizaciones y soft delete sobre la base de datos """
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
 
-    Estado = models.BooleanField()
+    def __str__(self):
+        usuario_info = f"{self.ID_Usuario.first_name} {self.ID_Usuario.last_name}" if self.ID_Usuario else "Sin cajero"
+        estado_info = "Activa" if self.Estado else "Inactiva"
+        return f"Caja {self.nombre} - {usuario_info} - {estado_info}"
+
+    class Meta:
+        db_table = 'CAJA'
+        verbose_name = 'Caja'
+        verbose_name_plural = 'Cajas'
+        ordering = ['nombre']
 
 """ 
 Para la tabla de Servicio no es posible la eliminación de datos, sino que simplemente es un servicio deshabilitado o habilitado,
@@ -12,11 +34,13 @@ esto sucede para no afectar la integridad de los datos en la tabla de turno, pue
 por lógica de negocio y seguridad de la información. 
  """
 class Servicio(models.Model):
-
-    Nombre = models.CharField(max_length = 100, unique = True)
+    Nombre = models.CharField(max_length = 100)
     Prioridad = models.IntegerField()
-    Estado = models.BooleanField(default = True) # permite saber si el servicio esta deshabilitado o habilitado
+    Descripcion = models.TextField()
+    Estado = models.BooleanField() # permite saber si el servicio esta deshabilitado o habilitado
 
+    def __str__(self):
+        return self.Nombre + ' - ' + self.Descripcion
 class Horario(models.Model):
 
     """ Tabla para la actualización de las fechas en cuanto al tiempo del turno """
@@ -28,24 +52,55 @@ class Turno(models.Model):
 
     """ Atributos de llaves foraneas a las tablas necesarias """
     ID_Cliente = models.ForeignKey('users.Cliente', null = False, on_delete = models.SET_DEFAULT, default = 1) # AJustar para guardar a nombre de cliente default
-    ID_Caja = models.ForeignKey(Caja, null = False, on_delete = models.SET_DEFAULT, default = 1) # AJustar para guardar a nombre de caja default
+    ID_Caja = models.ForeignKey(Caja, null = True, blank=True, on_delete = models.SET_NULL) # Puede no tener caja asignada inicialmente
     ID_Servicio = models.ForeignKey(Servicio, null = False, on_delete = models.SET_DEFAULT, default = 1) # Deshabilitar el servicio unicamente
-    ID_Horario = models.ForeignKey(Horario, null = False, on_delete = models.CASCADE, default = 1)
+    ID_Horario = models.ForeignKey(Horario, null = True, blank=True, on_delete = models.CASCADE) # Puede no tener horario asignado inicialmente
 
     Cedula_manual = models.CharField(max_length = 12)
+    
+    """ Campos para gestión de cola de turnos """
+    numero_turno = models.PositiveIntegerField(unique=True, null=True, blank=True)
+    estado = models.CharField(max_length=20, choices=[
+        ('esperando', 'Esperando'),
+        ('en_atencion', 'En Atención'),
+        ('finalizado', 'Finalizado'),
+        ('cancelado', 'Cancelado')
+    ], default='esperando')
+    
+    es_prioritario = models.BooleanField(default=False)
+    posicion_cola = models.PositiveIntegerField(null=True, blank=True)
 
     """ Atributos necesarios para llevar registro de actualizacions y soft delete sobre la base de datos """
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"Turno {self.numero_turno} - {self.ID_Cliente} - {self.estado}"
+    
+    class Meta:
+        db_table = 'TURNO'
+        verbose_name = 'Turno'
+        verbose_name_plural = 'Turnos'
+        ordering = ['posicion_cola', 'created_at']
 
 class Factura(models.Model):
-
-    """ Tabla intermedia entre los productos y el turno """
-
-    Turno = models.ForeignKey(Turno, null = False, on_delete = models.SET_DEFAULT, default = 1) # Es necesario conocer los productos vendidos,
-                                                                                    # incluso si se llega a eliminar el turno
-
-    Producto = models.ForeignKey(Producto, null = True, on_delete = models.SET_NULL) # Es posible que no se reclame un producto
-    Cantidad_Producto = models.IntegerField() # cuanta cantidad por cada producto 
+    """Tabla para las facturas de venta"""
+    
+    ID_Turno = models.ForeignKey(Turno, null=True, blank=True, on_delete=models.CASCADE, related_name='facturas')
+    Total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    productos_vendidos = models.TextField(default='[]', blank=True)  # JSON como texto
+    fecha_factura = models.DateTimeField(null=True, blank=True)
+    
+    # Mantener campos existentes para compatibilidad si existen
+    Turno = models.ForeignKey(Turno, null=True, blank=True, on_delete=models.SET_NULL, related_name='facturas_old')
+    
+    class Meta:
+        verbose_name = 'Factura'
+        verbose_name_plural = 'Facturas'
+    
+    def __str__(self):
+        turno_num = self.ID_Turno.numero_turno if self.ID_Turno else "N/A"
+        return f"Factura #{self.id} - Turno {turno_num} - ${self.Total}" 
 
 """
 class UsuarioEspera(models.Model):

@@ -7,11 +7,15 @@ from django.utils import timezone
 #from apps.tickets.models import Caja
 
 class Rol(models.Model):
-    administrador = models.BooleanField()
-    cliente = models.BooleanField()
-    Empleado = models.BooleanField()
+    nombre = models.CharField(max_length=50, unique=True)
+    
+    def __str__(self):
+        return self.nombre
 
-    # No hay opción de borrado, ni soft delete
+    class Meta:
+        db_table = 'ROL'
+        verbose_name = 'Rol'
+        verbose_name_plural = 'Roles'
 
 class User(AbstractUser):
 
@@ -49,8 +53,20 @@ class User(AbstractUser):
 
     dob = models.DateTimeField()
 
-    """ No es posible elimnar ninguno de los roles iniciales, por ello se maneja como protected la llave foranea """
-    rol = models.ForeignKey(Rol, on_delete = models.PROTECT, null = False, blank = False) 
+    """ Campo de rol """
+    ROLE_CHOICES = [
+        ('cliente', 'Cliente'),
+        ('empleado', 'Empleado'),
+        ('administrador', 'Administrador'),
+    ]
+    
+    rol = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name='Rol del usuario'
+    ) 
     
     groups = models.ManyToManyField(Group, related_name="custom_user_groups")
     user_permissions = models.ManyToManyField(Permission, related_name="custom_user_permissions")
@@ -106,17 +122,22 @@ class Empleado(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True,blank=True)
 
-    """  """
+    """ Fecha de contratación del empleado """
 
     Fecha_contratacion = models.DateField()
 
-    """  """
+    def __str__(self):
+        return f"{self.ID_Usuario.first_name} {self.ID_Usuario.last_name} - Empleado"
 
-    ID_Caja = models.ForeignKey('tickets.Caja', default = 1,  on_delete = models.SET_DEFAULT, null = False)
+    class Meta:
+        db_table = 'EMPLEADO'
+        verbose_name = 'Empleado'
+        verbose_name_plural = 'Empleados'
+        ordering = ['id']
 
 class Administrador(models.Model):
 
-    ID_Usuario = models.ForeignKey(User, on_delete = models.CASCADE, null = False, unique = True) # Debe ser unico ese id de usuario
+    ID_Usuario = models.OneToOneField(User, on_delete = models.CASCADE, null = False) # Debe ser unico ese id de usuario
 
     """ Atributos necesarios para llevar registro de actualizacions y soft delete sobre la base de datos """
 

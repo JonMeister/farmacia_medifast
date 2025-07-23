@@ -17,35 +17,74 @@ export default function Login() {
     e.preventDefault();
 
     try {
-      const response = await axios.post("http://127.0.0.1:8000/api/authtoken", {
-        cc: Number(cc),
-        password: password,
-      });
+      const response = await axios.post(
+        "http://127.0.0.1:8000/api/authtoken/",
+        {
+          cc: Number(cc),
+          password: password,
+        }
+      );
 
-      const { token, is_staff, is_client, is_cajero} = response.data;
-      localStorage.setItem("token", token);
-      localStorage.setItem("is_staff", is_staff);
+      const { token, rol, is_client, is_cajero, user_data } = response.data;
+
+      // Guardar token de autenticación con clave consistente
+      localStorage.setItem("authToken", token);
+      localStorage.setItem("token", token); // Mantener compatibilidad
+      localStorage.setItem("rol", rol || "cliente");
       localStorage.setItem("is_client", is_client);
       localStorage.setItem("is_cajero", is_cajero);
 
-      console.log(token); //Eliminar despues
-      console.log("Admin:", is_staff); //Eliminar despues
+      // Guardar información del usuario para las páginas de turno
+      if (user_data) {
+        localStorage.setItem("user_cc", user_data.cc || cc);
+        localStorage.setItem("user_name", user_data.first_name || "");
+        localStorage.setItem("user_lastname", user_data.last_name || "");
+        localStorage.setItem("user_email", user_data.email || "");
+      } else {
+        localStorage.setItem("user_cc", cc);
+      }
 
-      if (is_staff) {
+      console.log("Token:", token);
+      console.log("Rol:", rol);
+      console.log("Cliente:", is_client);
+      console.log("Cajero:", is_cajero);
+
+      // Navegación basada en roles (prioridad: administrador > cajero > client)
+      if (rol === "administrador") {
+        // Administrador: acceso completo al sistema
         navigate("/admin");
+      } else if (is_cajero) {
+        // Empleado/Cajero: acceso a funciones de caja
+        navigate("/cajero");
+      } else if (is_client) {
+        // Cliente: primero verificar si tiene turno activo, sino redirigir a pedir turno
+        navigate("/pedir-turno");
+      } else {
+        // Usuario sin rol específico
+        alert("Usuario sin rol asignado. Contacte al administrador.");
       }
-
-      if (is_client){
-        navigate("/turno")
-      }
-
-      
     } catch (error) {
-      alert(
-        "Error al iniciar sesión: " +
-          (error.response?.data?.non_field_errors?.[0] ||
-            "Credenciales inválidas")
-      );
+      console.error("Error de login:", error);
+
+      let errorMessage = "Error al iniciar sesión: ";
+
+      if (error.response?.status === 400) {
+        errorMessage +=
+          error.response?.data?.non_field_errors?.[0] ||
+          "Credenciales inválidas";
+      } else if (error.response?.status === 401) {
+        errorMessage += "Credenciales incorrectas";
+      } else if (error.response?.status === 500) {
+        errorMessage += "Error del servidor. Intente más tarde";
+      } else if (error.code === "ECONNREFUSED" || !error.response) {
+        errorMessage +=
+          "No se puede conectar al servidor. Verifique que el backend esté funcionando";
+      } else {
+        errorMessage +=
+          error.response?.data?.detail || error.message || "Error desconocido";
+      }
+
+      alert(errorMessage);
     }
   };
 
@@ -68,7 +107,10 @@ export default function Login() {
             <button className="px-4 py-2 rounded-full bg-green-600 hover:bg-green-700 text-white">
               Login
             </button>
-            <button className="px-4 py-2 rounded-full border border-green-600 text-green-600 hover:bg-green-100 ">
+            <button
+              onClick={() => navigate("/register")}
+              className="px-4 py-2 rounded-full border border-green-600 text-green-600 hover:bg-green-100"
+            >
               Register
             </button>
           </div>

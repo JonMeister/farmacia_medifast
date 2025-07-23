@@ -1,521 +1,711 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+
+// Importar funciones de la API
 import {
-  GetAllUsers,
-  DeleteUser,
-  UpdateUser,
-  CreateUser,
+  GetAllUsersFromAllEndpoints,
+  CreateUserByRole,
+  UpdateUserWithRoleChange,
+  UpdateUserKeepingMultipleRoles,
+  DeleteUserFromEndpoint,
+  UpdateClientPriority,
 } from "../api/user.api";
 
-export default function ClientManagement({ users }) {
+export default function ClienteManagement() {
+  const navigate = useNavigate();
 
-  const isStaff = localStorage.getItem("is_staff") === "true"; 
-
-  if (!isStaff) {
-    return <p>No tienes permiso para acceder a esta sección.</p>;
-  }
-  
-  console.log("Users recibidos:", users);
-  const [allClients, setAllClients] = useState(
-    Array.isArray(users) ? users : []
-  );
-  const [clients, setClients] = useState(Array.isArray(users) ? users : []);
-  const [selectedClient, setSelectedClient] = useState(null);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isMobileView, setIsMobileView] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-
-  // Formularios
-  const [editForm, setEditForm] = useState({
-    first_name: "",
-    last_name: "",
-    phone_number: "",
-    prioridad: false,
-    is_staff: false,
-    is_cajero: false,
-    is_client: true,
+  // Estados principales
+  const [users, setUsers] = useState({
+    users: [],
+    clients: [],
+    u_admin: [],
+    employee: [],
   });
 
-  const [newUserForm, setNewUserForm] = useState({
-    first_name: "",
-    last_name: "",
-    email: "",
+  // Estado para manejar el usuario seleccionado
+  const [currentEndpoint, setCurrentEndpoint] = useState("users");
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState(""); // Estado para la búsqueda
+
+  // Estado del formulario
+  const [formData, setFormData] = useState({
     cc: "",
-    phone_number: "",
+    nombre: "",
+    apellido: "",
+    telefono: "",
+    email: "",
     password: "",
-    dob: new Date().toISOString().slice(0, 16),
-    prioridad: false,
-    is_staff: false,
-    is_cajero: false,
-    is_client: true,
+    rol: "cliente",
     is_active: true,
+    prioritario: false,
+    Fecha_contratacion: "",
   });
 
-  // Detectar cambios en el tamaño de la ventana
+  // Verificar autenticación al cargar
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobileView(window.innerWidth < 768);
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+    const authToken = localStorage.getItem("authToken");
 
-  // Llenar formulario de edición cuando se selecciona un cliente
-  useEffect(() => {
-    if (selectedClient) {
-      setEditForm({
-        first_name: selectedClient.first_name || "",
-        last_name: selectedClient.last_name || "",
-        phone_number: selectedClient.phone_number || "",
-        prioridad: selectedClient.prioridad || false,
-        is_staff: selectedClient.is_staff || false,
-        is_cajero: selectedClient.is_cajero || false,
-        is_client:
-          selectedClient.is_client !== undefined
-            ? selectedClient.is_client
-            : true,
-      });
-    }
-  }, [selectedClient]);
-
-  // Inicializar datos si es necesario
-  useEffect(() => {
-    if (!users || users.length === 0) {
-      const loadUsers = async () => {
-        try {
-          const response = await GetAllUsers();
-          if (response.data && Array.isArray(response.data)) {
-            setAllClients(response.data);
-            setClients(response.data);
-          }
-        } catch (error) {
-          console.error("Error al cargar usuarios:", error);
-        }
-      };
-      loadUsers();
-    }
-  }, [users]);
-
-  // Buscar usuarios
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
-    if (e.target.value === "") {
-      setClients(allClients);
-    }
-  };
-
-  const executeSearch = (term = searchTerm, clientList = allClients) => {
-    if (!term) {
-      setClients(clientList);
+    if (!authToken) {
+      navigate("/login");
       return;
     }
 
-    const lowerCaseSearch = term.toLowerCase();
-    const filteredClients = clientList.filter(
-      (client) =>
-        (client.first_name &&
-          client.first_name.toLowerCase().includes(lowerCaseSearch)) ||
-        (client.last_name &&
-          client.last_name.toLowerCase().includes(lowerCaseSearch)) ||
-        (client.cc && client.cc.toString().includes(lowerCaseSearch)) ||
-        (client.phone_number &&
-          client.phone_number.toString().includes(lowerCaseSearch)) ||
-        (client.email && client.email.toLowerCase().includes(lowerCaseSearch))
-    );
-    setClients(filteredClients);
-  };
+    loadAllUsers();
+  }, [navigate]);
 
-  // Seleccionar cliente para editar
-  const handleSelect = (client) => {
-    if (selectedClient && selectedClient.id === client.id) {
-      // Si ya está seleccionado, deseleccionar
-      setSelectedClient(null);
-    } else {
-      // Seleccionar nuevo cliente y ocultar formulario de añadir
-      setSelectedClient(client);
-      setShowAddForm(false);
-    }
-  };
-
-  // Toggle para mostrar/ocultar contraseña
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
-  // Funciones para los formularios - MODIFICADAS para roles exclusivos
-  const handleEditChange = (e) => {
-    const { name, value, type, checked } = e.target;
-
-    // Si es un checkbox de rol, hacer exclusivo
-    if (
-      type === "checkbox" &&
-      (name === "is_staff" || name === "is_cajero" || name === "is_client")
-    ) {
-      if (checked) {
-        // Si se marca uno, desmarcar los otros
-        setEditForm({
-          ...editForm,
-          is_staff: name === "is_staff" ? true : false,
-          is_cajero: name === "is_cajero" ? true : false,
-          is_client: name === "is_client" ? true : false,
-        });
-      } else {
-        // Si se desmarca el único rol seleccionado, no permitirlo
-        // Al menos debe tener un rol
-        if (
-          (name === "is_staff" && !editForm.is_cajero && !editForm.is_client) ||
-          (name === "is_cajero" && !editForm.is_staff && !editForm.is_client) ||
-          (name === "is_client" && !editForm.is_staff && !editForm.is_cajero)
-        ) {
-          return; // No permitir desmarcar el único rol
-        }
-
-        setEditForm({
-          ...editForm,
-          [name]: false,
-        });
-      }
-    } else {
-      // Comportamiento normal para otros campos
-      setEditForm({
-        ...editForm,
-        [name]: type === "checkbox" ? checked : value,
-      });
-    }
-  };
-
-  const handleNewUserChange = (e) => {
-    const { name, value, type, checked } = e.target;
-
-    // Si es un checkbox de rol, hacer exclusivo
-    if (
-      type === "checkbox" &&
-      (name === "is_staff" || name === "is_cajero" || name === "is_client")
-    ) {
-      if (checked) {
-        // Si se marca uno, desmarcar los otros
-        setNewUserForm({
-          ...newUserForm,
-          is_staff: name === "is_staff" ? true : false,
-          is_cajero: name === "is_cajero" ? true : false,
-          is_client: name === "is_client" ? true : false,
-        });
-      } else {
-        // Si se desmarca el único rol seleccionado, no permitirlo
-        if (
-          (name === "is_staff" &&
-            !newUserForm.is_cajero &&
-            !newUserForm.is_client) ||
-          (name === "is_cajero" &&
-            !newUserForm.is_staff &&
-            !newUserForm.is_client) ||
-          (name === "is_client" &&
-            !newUserForm.is_staff &&
-            !newUserForm.is_cajero)
-        ) {
-          return; // No permitir desmarcar el único rol
-        }
-
-        setNewUserForm({
-          ...newUserForm,
-          [name]: false,
-        });
-      }
-    } else {
-      // Comportamiento normal para otros campos
-      setNewUserForm({
-        ...newUserForm,
-        [name]: type === "checkbox" ? checked : value,
-      });
-    }
-  };
-
-  // Manejar guardado de edición
-  const handleEdit = async (e) => {
-    e.preventDefault();
+  // Cargar usuarios de todos los endpoints
+  const loadAllUsers = async () => {
     try {
-      await UpdateUser(selectedClient.id, editForm);
+      setLoading(true);
+      const data = await GetAllUsersFromAllEndpoints();
+      setUsers(data);
+      setError(null);
+    } catch (err) {
+      console.error("Error al cargar usuarios:", err);
+      setError("Error al cargar los usuarios");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      // Actualizar cliente en la lista local
-      const updatedClient = { ...selectedClient, ...editForm };
-      const updatedAllClients = allClients.map((c) =>
-        c.id === selectedClient.id ? updatedClient : c
+  // Manejar cambios en el formulario
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    const newValue = type === "checkbox" ? checked : value;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: newValue,
+    }));
+
+    // Validar email en tiempo real (solo cuando se está escribiendo en el campo email)
+    if (name === "email" && value.trim()) {
+      const emailValidation = validateEmailUnique(value, editingId);
+      if (!emailValidation.isValid) {
+        setError(emailValidation.message);
+      } else {
+        // Limpiar error solo si era un error de email duplicado
+        if (error && error.includes("email ya está registrado")) {
+          setError(null);
+        }
+      }
+    }
+  };
+
+  // Validar que el email no esté duplicado
+  const validateEmailUnique = (email, excludeUserId = null) => {
+    // Verificar en todos los endpoints
+    for (const endpointKey of Object.keys(users)) {
+      const usersInEndpoint = users[endpointKey] || [];
+      const duplicateUser = usersInEndpoint.find(
+        (user) =>
+          user.email &&
+          user.email.toLowerCase() === email.toLowerCase() &&
+          user.id !== excludeUserId
       );
 
-      setAllClients(updatedAllClients);
+      if (duplicateUser) {
+        return {
+          isValid: false,
+          message: `El email ya está registrado por otro usuario (${duplicateUser.nombre} ${duplicateUser.apellido})`,
+        };
+      }
+    }
 
-      // Actualizar la lista filtrada si hay una búsqueda activa
-      if (searchTerm) {
-        executeSearch(searchTerm, updatedAllClients);
+    return { isValid: true, message: "" };
+  };
+
+  // Obtener usuarios del endpoint actual con filtro de búsqueda
+  const getCurrentUsers = () => {
+    const allUsers = users[currentEndpoint] || [];
+
+    if (!searchTerm) {
+      return allUsers;
+    }
+
+    // Filtrar usuarios por CC, nombre, apellido o email
+    return allUsers.filter((user) => {
+      const searchLower = searchTerm.toLowerCase();
+      const cc = (user.cc || "").toString().toLowerCase();
+      const nombre = (user.nombre || "").toLowerCase();
+      const apellido = (user.apellido || "").toLowerCase();
+      const email = (user.email || "").toLowerCase();
+
+      return (
+        cc.includes(searchLower) ||
+        nombre.includes(searchLower) ||
+        apellido.includes(searchLower) ||
+        email.includes(searchLower)
+      );
+    });
+  };
+
+  // Mostrar formulario para crear (solo en USERS)
+  const handleShowCreateForm = () => {
+    if (currentEndpoint !== "users") {
+      alert("Solo se pueden crear usuarios desde la sección USERS");
+      return;
+    }
+
+    setFormData({
+      cc: "",
+      nombre: "",
+      apellido: "",
+      telefono: "",
+      email: "",
+      password: "",
+      rol: "", // Permitir crear sin rol
+      is_active: true,
+      prioritario: false,
+      Fecha_contratacion: "",
+    });
+    setEditingId(null);
+    setShowForm(true);
+  };
+
+  // Mostrar formulario para editar
+  const handleShowEditForm = (user) => {
+    // Asegurar que tenemos todos los datos del usuario para editar
+    // Manejar diferentes formatos de datos según el endpoint
+    const userData = {
+      cc: user.cc || "",
+      nombre: user.nombre || user.first_name || "",
+      apellido: user.apellido || user.last_name || "",
+      telefono: user.telefono || user.phone_number || "",
+      email: user.email || "",
+      password: "",
+      rol: user.rol || "",
+      is_active: user.is_active !== undefined ? user.is_active : true,
+      prioritario: user.prioritario !== undefined ? user.prioritario : false,
+      Fecha_contratacion:
+        user.Fecha_contratacion || user.fecha_contratacion || "",
+    };
+
+    // Si estamos en un endpoint específico y el rol está vacío, inferirlo
+    if (!userData.rol) {
+      if (currentEndpoint === "clients") userData.rol = "cliente";
+      else if (currentEndpoint === "u_admin") userData.rol = "administrador";
+      else if (currentEndpoint === "employee") userData.rol = "empleado";
+    }
+
+    // Ahora user.id debe ser siempre el ID del usuario base debido al mapeo corregido
+    const userIdToEdit = user.id;
+
+    setFormData(userData);
+    setEditingId(userIdToEdit);
+    setShowForm(true);
+
+    // Debug para verificar que se está configurando correctamente
+    console.log("=== EDITANDO USUARIO ===");
+    console.log("Usuario original:", user);
+    console.log("Datos mapeados para formulario:", userData);
+    console.log("ID a editar (user.id):", userIdToEdit);
+    console.log("Endpoint actual:", currentEndpoint);
+    console.log("Estado editingId después del set:", userIdToEdit);
+    console.log("===========================");
+  };
+
+  // Cancelar edición/creación
+  const handleCancel = () => {
+    console.log("Cancelando formulario - reseteando estados");
+    setFormData({
+      cc: "",
+      nombre: "",
+      apellido: "",
+      telefono: "",
+      email: "",
+      password: "",
+      rol: "cliente",
+      is_active: true,
+      prioritario: false,
+      Fecha_contratacion: "",
+    });
+    setEditingId(null);
+    setShowForm(false);
+    setError(null); // Limpiar errores al cancelar
+  };
+
+  // Guardar usuario (crear o actualizar)
+  const handleSave = async (e) => {
+    e.preventDefault();
+
+    // Validar email único
+    const emailValidation = validateEmailUnique(formData.email, editingId);
+    if (!emailValidation.isValid) {
+      setError(emailValidation.message);
+      return;
+    }
+
+    try {
+      if (editingId) {
+        // EDITAR: Para todos los endpoints usar función completa de actualización
+        console.log("Actualizando usuario:", editingId);
+        console.log("Datos a enviar:", formData);
+        console.log("Endpoint actual:", currentEndpoint);
+
+        await UpdateUserWithRoleChange(editingId, formData, currentEndpoint);
       } else {
-        setClients(updatedAllClients);
+        // CREAR: Solo desde USERS
+        if (currentEndpoint !== "users") {
+          alert("Solo se pueden crear usuarios desde la sección USERS");
+          return;
+        }
+        console.log("Creando nuevo usuario:", formData);
+        await CreateUserByRole(formData);
       }
 
-      // Actualizar el cliente seleccionado con los cambios
-      setSelectedClient(updatedClient);
+      await loadAllUsers();
+      handleCancel();
+      setError(null); // Limpiar errores previos si todo salió bien
+    } catch (err) {
+      console.error("Error al guardar usuario:", err);
 
-      alert("Usuario actualizado con éxito");
-    } catch (error) {
-      console.error("Error al actualizar usuario:", error);
-      alert("Error al actualizar usuario");
+      // Manejar diferentes tipos de errores
+      let errorMessage = "Error al guardar el usuario";
+
+      if (err.response?.data) {
+        const backendErrors = err.response.data;
+        if (typeof backendErrors === "object") {
+          // Si hay errores específicos de campos
+          const errorMessages = [];
+          for (const [field, messages] of Object.entries(backendErrors)) {
+            if (Array.isArray(messages)) {
+              errorMessages.push(`${field}: ${messages.join(", ")}`);
+            } else {
+              errorMessages.push(`${field}: ${messages}`);
+            }
+          }
+          errorMessage = errorMessages.join("\n");
+        } else if (backendErrors.error) {
+          errorMessage = backendErrors.error;
+        } else if (backendErrors.detail) {
+          errorMessage = backendErrors.detail;
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      setError(errorMessage);
     }
   };
 
-  // Manejar agregar nuevo usuario
-  const handleAdd = async (e) => {
-    e.preventDefault();
+  // Eliminar usuario
+  const handleDelete = async (id) => {
+    if (!window.confirm("¿Estás seguro de que deseas eliminar este usuario?")) {
+      return;
+    }
+
     try {
-      const response = await CreateUser(newUserForm);
-      const newUser = response.data;
-
-      // Actualizar listas
-      const updatedAllClients = [...allClients, newUser];
-      setAllClients(updatedAllClients);
-
-      if (searchTerm) {
-        executeSearch(searchTerm, updatedAllClients);
-      } else {
-        setClients(updatedAllClients);
-      }
-
-      // Limpiar formulario y cerrar
-      setNewUserForm({
-        first_name: "",
-        last_name: "",
-        email: "",
-        cc: "",
-        phone_number: "",
-        password: "",
-        dob: new Date().toISOString().slice(0, 16),
-        prioridad: false,
-        is_staff: false,
-        is_cajero: false,
-        is_client: true,
-        is_active: true,
-      });
-
-      setShowAddForm(false);
-      alert("Usuario creado con éxito");
-    } catch (error) {
-      console.error("Error al crear usuario:", error);
-      alert(
-        "Error al crear usuario. Verifique que la cédula no esté duplicada."
+      await DeleteUserFromEndpoint(id, currentEndpoint);
+      await loadAllUsers();
+    } catch (err) {
+      console.error("Error al eliminar usuario:", err);
+      setError(
+        "Error al eliminar el usuario: " +
+          (err.response?.data?.detail || err.message)
       );
     }
   };
 
-  // Manejar eliminar usuario
-  const handleDelete = async (client) => {
-    if (
-      window.confirm(
-        `¿Está seguro que desea eliminar al usuario ${client.first_name} ${client.last_name}?`
-      )
-    ) {
-      try {
-        // Llamar a la API para eliminar el usuario
-        await DeleteUser(client.id);
-
-        // Actualizar la lista de todos los clientes
-        const updatedAllClients = allClients.filter((c) => c.id !== client.id);
-        setAllClients(updatedAllClients);
-
-        // Actualizar la lista filtrada
-        if (searchTerm) {
-          executeSearch(searchTerm, updatedAllClients);
-        } else {
-          setClients(updatedAllClients);
-        }
-
-        // Si el cliente eliminado es el seleccionado, deseleccionarlo
-        if (selectedClient && selectedClient.id === client.id) {
-          setSelectedClient(null);
-        }
-
-        alert("Usuario eliminado con éxito");
-      } catch (error) {
-        console.error("Error al eliminar usuario:", error);
-        alert("Error al eliminar usuario");
-      }
-    }
+  // Seleccionar usuario para ver detalles
+  const handleSelectUser = (user) => {
+    setSelectedUser(user);
   };
 
-  // Mostrar/ocultar formulario de añadir
-  const toggleAddForm = () => {
-    // Si hay un cliente seleccionado, deseleccionarlo
-    if (showAddForm) {
-      setShowAddForm(false);
-    } else {
-      setSelectedClient(null);
-      setShowAddForm(true);
-    }
+  // Cambiar endpoint actual
+  const handleEndpointChange = (endpoint) => {
+    setCurrentEndpoint(endpoint);
+    setSelectedUser(null);
+    setShowForm(false);
+    setSearchTerm(""); // Limpiar búsqueda al cambiar endpoint
   };
 
-  // Función para mostrar prioridad como texto
-  const checkPriority = (priority) => {
-    return priority ? (
-      <span className="text-red-500 font-bold">Alta</span>
-    ) : (
-      <span className="text-green-500">Normal</span>
-    );
+  // Obtener título del endpoint
+  const getEndpointTitle = (endpoint) => {
+    const titles = {
+      users: "Usuarios Base",
+      clients: "Clientes",
+      u_admin: "Administradores",
+      employee: "Empleados",
+    };
+    return titles[endpoint] || endpoint;
   };
 
-  // Función para mostrar rol del usuario - MODIFICADA para mostrar un solo rol
-  const checkType = (user) => {
-    if (user.is_staff === true) {
-      return "Administrador";
-    } else if (user.is_cajero === true) {
-      return "Cajero";
-    } else if (user.is_client === true) {
-      return "Cliente";
-    } else {
-      return "Sin rol";
-    }
-  };
-
-  // Renderizar usuarios como tarjetas para vista móvil
-  const renderClientCards = () => {
-    return clients.map((client, index) => (
-      <div
-        key={client.id || index}
-        className={`mb-4 p-4 border rounded-lg shadow ${
-          selectedClient?.id === client.id ? "bg-green-50 border-green-500" : ""
-        }`}
-      >
-        <div className="flex justify-between mb-2">
-          <h3 className="font-bold">
-            {client.first_name} {client.last_name}
-          </h3>
-          <div>
-            <span className="text-sm text-gray-600">CC: {client.cc}</span>
-          </div>
-        </div>
-
-        <div className="mb-2">
-          <p className="text-sm mb-1">
-            <span className="font-medium">Teléfono:</span> {client.phone_number}
-          </p>
-          <p className="text-sm mb-1">
-            <span className="font-medium">Prioridad:</span>{" "}
-            {checkPriority(client.prioridad)}
-          </p>
-          <p className="text-sm">
-            <span className="font-medium">Tipo:</span> {checkType(client)}
-          </p>
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            onClick={() => handleSelect(client)}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs flex-1"
-          >
-            Editar
-          </button>
-          <button
-            onClick={() => handleDelete(client)}
-            className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs flex-1"
-          >
-            Eliminar
-          </button>
-        </div>
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="text-xl">Cargando usuarios...</div>
       </div>
-    ));
-  };
+    );
+  }
 
   return (
-    <main className="flex-1 p-4 md:p-8 flex flex-col gap-4 md:gap-8">
-      <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">
-        <div
-          className={`flex-1 bg-white rounded-xl shadow p-4 md:p-6 ${
-            (selectedClient || showAddForm) && isMobileView ? "mb-4" : ""
-          }`}
-        >
-          {/* Título ahora como encabezado independiente */}
-          <div className="mb-4">
-            <h1 className="text-2xl md:text-3xl font-bold">
-              Gestión de Usuarios
-            </h1>
-            <p className="text-gray-600">
-              Administra los usuarios del sistema, edita sus datos y crea nuevos
-              usuarios.
-            </p>
-          </div>
+    <div className="min-h-screen flex flex-col bg-gray-100 mr-6 ml-6 rounded-xl">
+      {/* Header */}
+      <div className="bg-white shadow-sm  px-4 sm:px-6 py-4 rounded-t-xl">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
+          Gestión de Usuarios
+        </h1>
+        <p className="text-sm sm:text-base text-gray-600">
+          Administra usuarios desde un solo lugar
+        </p>
+      </div>
 
-          {/* Barra de búsqueda y botón de agregar */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full">
-              <div className="flex w-full gap-2">
+      {/* Menu Bar */}
+      <div className="bg-white shadow-sm border-b px-4 sm:px-6 py-3">
+        <div className="flex flex-wrap gap-1 sm:gap-2">
+          {Object.keys(users).map((endpoint) => (
+            <button
+              key={endpoint}
+              onClick={() => handleEndpointChange(endpoint)}
+              className={`px-2 sm:px-4 py-2 rounded-lg font-medium transition-all duration-200 text-xs sm:text-sm ${
+                currentEndpoint === endpoint
+                  ? "bg-blue-600 text-white shadow-md"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              <span className="hidden sm:inline">
+                {getEndpointTitle(endpoint)}
+              </span>
+              <span className="sm:hidden">
+                {getEndpointTitle(endpoint).split(" ")[0]}
+              </span>
+              <span className="ml-1">({users[endpoint]?.length || 0})</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Error Alert */}
+      {error && (
+        <div className="mx-4 sm:mx-6 mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+          <span className="block sm:inline text-sm">{error}</span>
+          <span
+            className="absolute top-0 bottom-0 right-0 px-4 py-3 cursor-pointer"
+            onClick={() => setError(null)}
+          >
+            <svg
+              className="fill-current h-6 w-6"
+              role="button"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+            >
+              <title>Close</title>
+              <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z" />
+            </svg>
+          </span>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
+        {/* Left Panel - Lista de usuarios */}
+        <div
+          className="w-full lg:w-2/3 bg-white shadow-lg m-2 sm:m-4 rounded-lg overflow-hidden flex flex-col"
+          style={{ maxHeight: "calc(100vh - 200px)" }}
+        >
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center px-4 sm:px-6 py-4 bg-gray-50 border-b gap-3 sm:gap-0 flex-shrink-0">
+            <h2 className="text-lg font-semibold text-gray-800">
+              {getEndpointTitle(currentEndpoint)}
+            </h2>
+
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-2 w-full sm:w-auto">
+              {/* Buscador */}
+              <div className="relative flex-1 sm:flex-initial">
                 <input
                   type="text"
-                  placeholder="Buscar..."
-                  className="border rounded px-3 py-2 flex-1 text-sm"
+                  placeholder="Buscar por CC, nombre o email..."
                   value={searchTerm}
-                  onChange={handleSearch}
-                  onKeyPress={(e) => e.key === "Enter" && executeSearch()}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full sm:w-64 px-3 py-2 pl-10 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-                <button
-                  className="bg-purple-700 hover:bg-purple-800 text-white px-3 py-2 rounded-lg font-medium text-sm whitespace-nowrap"
-                  onClick={() => executeSearch()}
-                >
-                  Buscar
-                </button>
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg
+                    className="h-4 w-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </div>
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm("")}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    <svg
+                      className="h-4 w-4 text-gray-400 hover:text-gray-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                )}
               </div>
-              <button
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium text-sm w-full sm:w-auto"
-                onClick={toggleAddForm}
-              >
-                {showAddForm ? "Cancelar" : "Agregar Usuario"}
-              </button>
+
+              {/* Botón de acción */}
+              {currentEndpoint === "users" ? (
+                <button
+                  onClick={handleShowCreateForm}
+                  className="px-3 sm:px-4 py-2 rounded-lg font-medium text-sm w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Crear Usuario
+                </button>
+              ) : (
+                <button
+                  onClick={() =>
+                    selectedUser && handleShowEditForm(selectedUser)
+                  }
+                  className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-sm w-full sm:w-auto ${
+                    selectedUser
+                      ? "bg-blue-600 hover:bg-blue-700 text-white"
+                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  }`}
+                  disabled={!selectedUser}
+                >
+                  {selectedUser ? "Editar Usuario" : "Seleccionar Usuario"}
+                </button>
+              )}
             </div>
           </div>
 
-          {clients.length === 0 ? (
-            <div className="text-center py-6">
-              <p className="text-gray-500 text-sm">
-                No se encontraron usuarios con ese criterio de búsqueda
-              </p>
-            </div>
-          ) : isMobileView ? (
-            <div className="mt-4">{renderClientCards()}</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b">
-                  <tr>
-                    <th className="py-2">Nombre</th>
-                    <th className="py-2">Apellido</th>
-                    <th className="py-2">Identificación</th>
-                    <th className="py-2">Prioridad</th>
-                    <th className="py-2">Tipo</th>
-                    <th className="py-2">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {clients.map((client, index) => (
-                    <tr
-                      key={client.id || index}
-                      className={`border-b ${
-                        selectedClient?.id === client.id ? "bg-green-50" : ""
+          <div
+            className="flex-1 overflow-auto"
+            style={{ maxHeight: "calc(100vh - 280px)", scrollbarWidth: "thin" }}
+          >
+            {/* Indicador de búsqueda */}
+            {searchTerm && (
+              <div className="px-4 py-2 bg-blue-50 border-b text-sm text-blue-700">
+                {getCurrentUsers().length > 0
+                  ? `Mostrando ${
+                      getCurrentUsers().length
+                    } resultado(s) para "${searchTerm}"`
+                  : `No se encontraron resultados para "${searchTerm}"`}
+              </div>
+            )}
+
+            {/* Mobile View - Cards */}
+            <div className="block lg:hidden space-y-2 p-2">
+              {getCurrentUsers().map((user) => (
+                <div
+                  key={user.id}
+                  className={`p-4 border-b hover:bg-gray-50 cursor-pointer rounded-lg border ${
+                    selectedUser?.id === user.id
+                      ? "bg-blue-50 border-blue-200"
+                      : "border-gray-200"
+                  }`}
+                  onClick={() => handleSelectUser(user)}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex-1">
+                      <h3 className="font-medium text-gray-900">
+                        {user.nombre} {user.apellido}
+                      </h3>
+                      <p className="text-sm text-gray-600">{user.email}</p>
+                      <p className="text-sm text-gray-600">CC: {user.cc}</p>
+                      {/* Información adicional específica para clientes */}
+                      {currentEndpoint === "clients" &&
+                        user.prioritario !== undefined && (
+                          <p className="text-sm text-gray-600">
+                            Prioritario: {user.prioritario ? "Sí" : "No"}
+                          </p>
+                        )}
+                      {/* Información adicional específica para empleados */}
+                      {currentEndpoint === "employee" &&
+                        user.Fecha_contratacion && (
+                          <p className="text-sm text-gray-600">
+                            F. Contratación: {user.Fecha_contratacion}
+                          </p>
+                        )}
+                    </div>
+                    <div className="text-right">
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          user.rol === "administrador"
+                            ? "bg-purple-100 text-purple-800"
+                            : user.rol === "empleado"
+                            ? "bg-blue-100 text-blue-800"
+                            : user.rol === "cliente"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {user.rol || "Sin rol"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        user.is_active
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
                       }`}
                     >
-                      <td className="py-2">{client.first_name}</td>
-                      <td className="py-2">{client.last_name}</td>
-                      <td className="py-2">{client.cc}</td>
-                      <td className="py-2">
-                        {checkPriority(client.prioridad)}
+                      {user.is_active ? "Activo" : "Inactivo"}
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleShowEditForm(user);
+                        }}
+                        className="text-indigo-600 hover:text-indigo-900 text-sm"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(user.id);
+                        }}
+                        className="text-red-600 hover:text-red-900 text-sm"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop View - Table */}
+            <div className="hidden lg:block overflow-x-auto overflow-y-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50 sticky top-0 z-10">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      CC
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      Nombre
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      Email
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      Rol
+                    </th>
+                    {/* Columna adicional para clientes */}
+                    {currentEndpoint === "clients" && (
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                        Prioritario
+                      </th>
+                    )}
+                    {/* Columna adicional para empleados */}
+                    {currentEndpoint === "employee" && (
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                        F. Contratación
+                      </th>
+                    )}
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      Estado
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      Acciones
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {getCurrentUsers().map((user) => (
+                    <tr
+                      key={user.id}
+                      className={`hover:bg-gray-50 cursor-pointer ${
+                        selectedUser?.id === user.id ? "bg-blue-50" : ""
+                      }`}
+                      onClick={() => handleSelectUser(user)}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {user.cc}
                       </td>
-                      <td className="py-2">{checkType(client)}</td>
-                      <td className="py-2">
-                        <div className="flex gap-2 mb-1 mt-1">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {user.nombre} {user.apellido}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-xs truncate">
+                        {user.email}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${
+                            user.rol === "administrador"
+                              ? "bg-purple-100 text-purple-800"
+                              : user.rol === "empleado"
+                              ? "bg-blue-100 text-blue-800"
+                              : user.rol === "cliente"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {user.rol || "Sin rol"}
+                        </span>
+                      </td>
+                      {/* Celda adicional para clientes - Prioritario */}
+                      {currentEndpoint === "clients" && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <span
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${
+                              user.prioritario
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-gray-100 text-gray-600"
+                            }`}
+                          >
+                            {user.prioritario ? "Sí" : "No"}
+                          </span>
+                        </td>
+                      )}
+                      {/* Celda adicional para empleados - Fecha de Contratación */}
+                      {currentEndpoint === "employee" && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {user.Fecha_contratacion ||
+                            user.fecha_contratacion ||
+                            "N/A"}
+                        </td>
+                      )}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${
+                            user.is_active
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {user.is_active ? "Activo" : "Inactivo"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex gap-2 whitespace-nowrap">
                           <button
-                            onClick={() => handleSelect(client)}
-                            className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleShowEditForm(user);
+                            }}
+                            className="text-indigo-600 hover:text-indigo-900"
                           >
                             Editar
                           </button>
                           <button
-                            onClick={() => handleDelete(client)}
-                            className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(user.id);
+                            }}
+                            className="text-red-600 hover:text-red-900"
                           >
                             Eliminar
                           </button>
@@ -526,307 +716,353 @@ export default function ClientManagement({ users }) {
                 </tbody>
               </table>
             </div>
-          )}
+
+            {getCurrentUsers().length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                {searchTerm
+                  ? `No se encontraron usuarios que coincidan con "${searchTerm}"`
+                  : "No hay usuarios en esta sección"}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Panel lateral: Formulario de edición o Añadir nuevo usuario */}
-        {(selectedClient || showAddForm) && (
-          <div
-            className={`${
-              isMobileView ? "w-full" : "lg:w-1/3"
-            } bg-white rounded-lg shadow p-4 md:p-6 relative overflow-hidden`}
-          >
-            {/* Mostrar formulario de nuevo usuario o edición según corresponda */}
-            {showAddForm ? (
-              <>
-                <h2 className="text-2xl md:text-4xl font-bold mb-4 md:mb-6 relative z-10">
-                  Nuevo Usuario
-                </h2>
-                <form
-                  onSubmit={handleAdd}
-                  className="space-y-3 md:space-y-5 relative z-10 pr-0 md:pr-4"
-                >
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block mb-1 text-sm">Nombre</label>
-                      <input
-                        type="text"
-                        name="first_name"
-                        value={newUserForm.first_name}
-                        onChange={handleNewUserChange}
-                        className="border rounded px-3 py-2 w-full"
-                      />
-                    </div>
-                    <div>
-                      <label className="block mb-1 text-sm">Apellido</label>
-                      <input
-                        type="text"
-                        name="last_name"
-                        value={newUserForm.last_name}
-                        onChange={handleNewUserChange}
-                        className="border rounded px-3 py-2 w-full"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block mb-1 text-sm">
-                        Cédula ciudadanía *
-                      </label>
-                      <input
-                        type="number"
-                        name="cc"
-                        value={newUserForm.cc}
-                        onChange={handleNewUserChange}
-                        className="border rounded px-3 py-2 w-full"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block mb-1 text-sm">
-                        Número de teléfono *
-                      </label>
-                      <input
-                        type="number"
-                        name="phone_number"
-                        value={newUserForm.phone_number}
-                        onChange={handleNewUserChange}
-                        className="border rounded px-3 py-2 w-full"
-                        required
-                      />
-                    </div>
-                  </div>
+        {/* Right Panel - Detalles y formulario */}
+        <div
+          className="w-full lg:w-1/3 bg-white shadow-lg m-2 sm:m-4 lg:ml-0 rounded-lg overflow-hidden flex flex-col"
+          style={{ maxHeight: "calc(100vh - 200px)" }}
+        >
+          {showForm ? (
+            // Formulario de edición/creación
+            <div className="h-full flex flex-col">
+              <div className="px-4 sm:px-6 py-4 bg-gray-50 border-b">
+                <h3 className="text-lg font-semibold text-gray-800">
+                  {editingId
+                    ? `Editar Usuario (ID: ${editingId})`
+                    : "Crear Usuario"}
+                </h3>
+                {/* Debug info */}
+                <p className="text-xs text-gray-500 mt-1">
+                  Modo: {editingId ? "EDITAR" : "CREAR"} | Endpoint:{" "}
+                  {currentEndpoint} | User ID: {editingId || "N/A"}
+                </p>
+              </div>
+
+              <div className="flex-1 p-4 sm:p-6 overflow-auto">
+                <form onSubmit={handleSave} className="space-y-4">
                   <div>
-                    <label className="block mb-1 text-sm">
-                      Correo electrónico
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      CC
+                    </label>
+                    <input
+                      type="text"
+                      name="cc"
+                      value={formData.cc}
+                      onChange={handleChange}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Entre 6 y 10 dígitos"
+                      pattern="[0-9]{6,10}"
+                      minLength={6}
+                      maxLength={10}
+                      required
+                      disabled={editingId} // No permitir cambiar CC en edición
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Nombre
+                    </label>
+                    <input
+                      type="text"
+                      name="nombre"
+                      value={formData.nombre}
+                      onChange={handleChange}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Apellido
+                    </label>
+                    <input
+                      type="text"
+                      name="apellido"
+                      value={formData.apellido}
+                      onChange={handleChange}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Teléfono
+                    </label>
+                    <input
+                      type="text"
+                      name="telefono"
+                      value={formData.telefono}
+                      onChange={handleChange}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="3XXXXXXXXX o 6XXXXXXXXX (10 dígitos)"
+                      pattern="[36][0-9]{9}"
+                      minLength={10}
+                      maxLength={10}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email
                     </label>
                     <input
                       type="email"
                       name="email"
-                      value={newUserForm.email}
-                      onChange={handleNewUserChange}
-                      className="border rounded px-3 py-2 w-full"
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm">Contraseña *</label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        name="password"
-                        value={newUserForm.password}
-                        onChange={handleNewUserChange}
-                        className="border rounded px-3 py-2 w-full pr-10"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={togglePasswordVisibility}
-                        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
-                      >
-                        {showPassword ? (
-                          // Ícono de ojo abierto (visible)
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                            <path
-                              fillRule="evenodd"
-                              d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        ) : (
-                          // Ícono de ojo cerrado (oculto)
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z"
-                              clipRule="evenodd"
-                            />
-                            <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm">
-                      Fecha de nacimiento *
-                    </label>
-                    <input
-                      type="datetime-local"
-                      name="dob"
-                      value={newUserForm.dob}
-                      onChange={handleNewUserChange}
-                      className="border rounded px-3 py-2 w-full"
+                      value={formData.email}
+                      onChange={handleChange}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
                     />
                   </div>
-                  <div className="flex flex-col sm:flex-row sm:gap-4 flex-wrap">
-                    <div className="flex items-center mb-2 sm:mb-0 mr-4">
-                      <input
-                        type="checkbox"
-                        name="prioridad"
-                        checked={newUserForm.prioridad}
-                        onChange={handleNewUserChange}
-                        className="mr-2"
-                      />
-                      <label className="text-sm">Prioridad Alta</label>
-                    </div>
-                    <div className="flex items-center mb-2 sm:mb-0 mr-4">
-                      <input
-                        type="checkbox"
-                        name="is_client"
-                        checked={newUserForm.is_client}
-                        onChange={handleNewUserChange}
-                        className="mr-2"
-                      />
-                      <label className="text-sm">Es Cliente</label>
-                    </div>
-                    <div className="flex items-center mb-2 sm:mb-0 mr-4">
-                      <input
-                        type="checkbox"
-                        name="is_staff"
-                        checked={newUserForm.is_staff}
-                        onChange={handleNewUserChange}
-                        className="mr-2"
-                      />
-                      <label className="text-sm">Es Administrador</label>
-                    </div>
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        name="is_cajero"
-                        checked={newUserForm.is_cajero}
-                        onChange={handleNewUserChange}
-                        className="mr-2"
-                      />
-                      <label className="text-sm">Es Cajero</label>
-                    </div>
-                  </div>
-                  <button
-                    type="submit"
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium w-full sm:w-auto mt-2"
-                  >
-                    Crear Usuario
-                  </button>
-                </form>
-              </>
-            ) : (
-              <>
-                <div
-                  className="absolute top-0 right-0 h-full w-1/3 bg-green-700 hidden md:block"
-                  style={{
-                    clipPath: "polygon(100% 0, 0% 0, 100% 100%)",
-                    borderRadius: "0 8px 8px 0",
-                    transform: "scaleY(-1)",
-                    borderTopRightRadius: "8px",
-                    borderBottomRightRadius: "8px",
-                  }}
-                ></div>
 
-                <h2 className="text-2xl md:text-4xl font-bold mb-4 md:mb-6 relative z-10">
-                  Editar Usuario
-                </h2>
-                <form
-                  onSubmit={handleEdit}
-                  className="space-y-3 md:space-y-5 relative z-10 pr-0 md:pr-16"
-                >
                   <div>
-                    <label className="block mb-1 text-sm">Nombre</label>
-                    <input
-                      type="text"
-                      name="first_name"
-                      value={editForm.first_name}
-                      onChange={handleEditChange}
-                      className="border rounded px-3 py-2 w-4/5"
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm">Apellido</label>
-                    <input
-                      type="text"
-                      name="last_name"
-                      value={editForm.last_name}
-                      onChange={handleEditChange}
-                      className="border rounded px-3 py-2 w-4/5"
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm">
-                      Número de teléfono
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Contraseña
                     </label>
                     <input
-                      type="number"
-                      name="phone_number"
-                      value={editForm.phone_number}
-                      onChange={handleEditChange}
-                      className="border rounded px-3 py-2 w-4/5"
+                      type="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder={
+                        editingId ? "Dejar vacío para mantener actual" : ""
+                      }
+                      required={!editingId}
                     />
                   </div>
-                  <div className="flex flex-col sm:flex-row sm:gap-4 flex-wrap">
-                    <div className="flex items-center mb-2 sm:mb-0 mr-4">
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Rol
+                    </label>
+                    <select
+                      name="rol"
+                      value={formData.rol}
+                      onChange={handleChange}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Sin rol asignado</option>
+                      <option value="cliente">Cliente</option>
+                      <option value="empleado">Empleado</option>
+                      <option value="administrador">Administrador</option>
+                    </select>
+                  </div>
+
+                  {/* Campo de fecha de contratación solo para empleados */}
+                  {(formData.rol === "empleado" ||
+                    currentEndpoint === "employee") && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Fecha de Contratación
+                      </label>
                       <input
-                        type="checkbox"
-                        name="prioridad"
-                        checked={editForm.prioridad}
-                        onChange={handleEditChange}
-                        className="mr-2"
+                        type="date"
+                        name="Fecha_contratacion"
+                        value={formData.Fecha_contratacion}
+                        onChange={handleChange}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required={
+                          formData.rol === "empleado" ||
+                          currentEndpoint === "employee"
+                        }
                       />
-                      <label className="text-sm">Prioridad Alta</label>
                     </div>
-                    <div className="flex items-center mb-2 sm:mb-0 mr-4">
-                      <input
-                        type="checkbox"
-                        name="is_client"
-                        checked={editForm.is_client}
-                        onChange={handleEditChange}
-                        className="mr-2"
-                      />
-                      <label className="text-sm">Es Cliente</label>
-                    </div>
-                    <div className="flex items-center mb-2 sm:mb-0 mr-4">
-                      <input
-                        type="checkbox"
-                        name="is_staff"
-                        checked={editForm.is_staff}
-                        onChange={handleEditChange}
-                        className="mr-2"
-                      />
-                      <label className="text-sm">Es Administrador</label>
-                    </div>
+                  )}
+
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      name="is_active"
+                      checked={formData.is_active}
+                      onChange={handleChange}
+                      className="mr-2"
+                    />
+                    <label className="text-sm font-medium text-gray-700">
+                      Usuario Activo
+                    </label>
+                  </div>
+
+                  {/* Campo de prioridad solo para clientes */}
+                  {(formData.rol === "cliente" ||
+                    currentEndpoint === "clients") && (
                     <div className="flex items-center">
                       <input
                         type="checkbox"
-                        name="is_cajero"
-                        checked={editForm.is_cajero}
-                        onChange={handleEditChange}
+                        name="prioritario"
+                        checked={formData.prioritario}
+                        onChange={handleChange}
                         className="mr-2"
                       />
-                      <label className="text-sm">Es Cajero</label>
+                      <label className="text-sm font-medium text-gray-700">
+                        Cliente Prioritario
+                      </label>
                     </div>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row gap-2 pt-4">
+                    <button
+                      type="submit"
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg"
+                    >
+                      {editingId ? "Actualizar" : "Crear"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancel}
+                      className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg"
+                    >
+                      Cancelar
+                    </button>
                   </div>
-                  <button
-                    type="submit"
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium w-full sm:w-auto mt-2"
-                  >
-                    Guardar Cambios
-                  </button>
                 </form>
-              </>
-            )}
-          </div>
-        )}
+              </div>
+            </div>
+          ) : selectedUser ? (
+            // Detalles del usuario seleccionado
+            <div className="h-full flex flex-col">
+              <div className="px-4 sm:px-6 py-4 bg-gray-50 border-b">
+                <h3 className="text-lg font-semibold text-gray-800">
+                  Detalles del Usuario
+                </h3>
+              </div>
+
+              <div className="flex-1 p-4 sm:p-6 overflow-auto">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      CC
+                    </label>
+                    <p className="text-gray-900">{selectedUser.cc}</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Nombre Completo
+                    </label>
+                    <p className="text-gray-900">
+                      {selectedUser.nombre} {selectedUser.apellido}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Email
+                    </label>
+                    <p className="text-gray-900 break-words">
+                      {selectedUser.email}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Teléfono
+                    </label>
+                    <p className="text-gray-900">
+                      {selectedUser.telefono || "N/A"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Rol
+                    </label>
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        selectedUser.rol === "administrador"
+                          ? "bg-purple-100 text-purple-800"
+                          : selectedUser.rol === "empleado"
+                          ? "bg-blue-100 text-blue-800"
+                          : selectedUser.rol === "cliente"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {selectedUser.rol || "Sin rol"}
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Estado
+                    </label>
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        selectedUser.is_active
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {selectedUser.is_active ? "Activo" : "Inactivo"}
+                    </span>
+                  </div>
+
+                  {selectedUser.prioritario !== undefined && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Prioritario
+                      </label>
+                      <p className="text-gray-900">
+                        {selectedUser.prioritario ? "Sí" : "No"}
+                      </p>
+                    </div>
+                  )}
+
+                  {selectedUser.fecha_contratacion && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Fecha de Contratación
+                      </label>
+                      <p className="text-gray-900">
+                        {selectedUser.fecha_contratacion}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-6 flex flex-col sm:flex-row gap-2">
+                  <button
+                    onClick={() => handleShowEditForm(selectedUser)}
+                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => handleDelete(selectedUser.id)}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            // Mensaje inicial
+            <div className="h-full flex items-center justify-center text-gray-500 p-4">
+              <div className="text-center">
+                <p className="text-lg mb-2">Selecciona un usuario</p>
+                <p className="text-sm">
+                  Haz clic en un usuario de la lista para ver sus detalles
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </main>
+    </div>
   );
 }

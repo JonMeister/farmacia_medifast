@@ -1,121 +1,20 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/Button";
-
-// Datos de productos simulados
-const PRODUCTOS_MUESTRA = [
-  {
-    id: 1,
-    nombre: "Paracetamol",
-    marca: "Genfar",
-    tipo: "Analgésico",
-    precio: 5000,
-    descuento: 0,
-    requireOrden: false,
-    descripcion:
-      "Medicamento para aliviar el dolor y reducir la fiebre. Actúa bloqueando la producción de ciertas sustancias que causan dolor e inflamación.",
-    stock: 45,
-    presentacion: "Tabletas 500mg x 10 und",
-  },
-  {
-    id: 2,
-    nombre: "Ibuprofeno",
-    marca: "MK",
-    tipo: "Antiinflamatorio",
-    precio: 8000,
-    descuento: 1000,
-    requireOrden: false,
-    descripcion:
-      "Antiinflamatorio no esteroideo (AINE) utilizado para tratar el dolor, la fiebre y la inflamación.",
-    stock: 32,
-    presentacion: "Tabletas 400mg x 10 und",
-  },
-  {
-    id: 3,
-    nombre: "Omeprazol",
-    marca: "La Santé",
-    tipo: "Gastro",
-    precio: 12000,
-    descuento: 2000,
-    requireOrden: false,
-    descripcion:
-      "Inhibidor de la bomba de protones que disminuye la cantidad de ácido producido en el estómago.",
-    stock: 27,
-    presentacion: "Cápsulas 20mg x 14 und",
-  },
-  {
-    id: 4,
-    nombre: "Loratadina",
-    marca: "Bayer",
-    tipo: "Antialérgico",
-    precio: 7500,
-    descuento: 0,
-    requireOrden: false,
-    descripcion:
-      "Antihistamínico que reduce los síntomas de alergias como picazón, estornudos y secreción nasal.",
-    stock: 40,
-    presentacion: "Tabletas 10mg x 10 und",
-  },
-  {
-    id: 5,
-    nombre: "Amoxicilina",
-    marca: "Genfar",
-    tipo: "Antibiótico",
-    precio: 15000,
-    descuento: 3000,
-    requireOrden: true,
-    descripcion:
-      "Antibiótico de amplio espectro utilizado para tratar una variedad de infecciones bacterianas.",
-    stock: 18,
-    presentacion: "Cápsulas 500mg x 50 und",
-  },
-  {
-    id: 6,
-    nombre: "Aspirina",
-    marca: "Bayer",
-    tipo: "Analgésico",
-    precio: 4000,
-    descuento: 500,
-    requireOrden: false,
-    descripcion:
-      "Analgésico y antiinflamatorio que también actúa como anticoagulante. Útil para dolores leves y moderados.",
-    stock: 55,
-    presentacion: "Tabletas 100mg x 20 und",
-  },
-  {
-    id: 7,
-    nombre: "Losartán",
-    marca: "MK",
-    tipo: "Antihipertensivo",
-    precio: 9000,
-    descuento: 0,
-    requireOrden: true,
-    descripcion:
-      "Medicamento que bloquea la acción de ciertas sustancias naturales que contraen los vasos sanguíneos.",
-    stock: 22,
-    presentacion: "Tabletas 50mg x 30 und",
-  },
-  {
-    id: 8,
-    nombre: "Metformina",
-    marca: "La Santé",
-    tipo: "Antidiabético",
-    precio: 10000,
-    descuento: 1500,
-    requireOrden: true,
-    descripcion:
-      "Medicamento utilizado para tratar la diabetes tipo 2, mejora la sensibilidad a la insulina.",
-    stock: 15,
-    presentacion: "Tabletas 850mg x 30 und",
-  },
-];
+import {
+  TIPOS_MEDICAMENTOS,
+  fetchProductos,
+  saveProducto,
+  desactivarProducto,
+  activarProducto,
+  formatPrice,
+} from "../api/producto.api";
 
 export default function ProductosManagement() {
   const navigate = useNavigate();
 
-  // Simulación de verificación de usuario staff
-  // En una aplicación real, esto vendría de una autenticación
-  const [isStaff, setIsStaff] = useState(true); // Siempre true para simulación
+  // Estado para autenticación
+  const [token, setToken] = useState(null);
 
   // Estados
   const [productos, setProductos] = useState([]);
@@ -126,43 +25,50 @@ export default function ProductosManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
-    nombre: "",
-    marca: "",
-    tipo: "",
-    precio: 0,
-    descuento: 0,
-    requireOrden: false,
-    descripcion: "",
-    stock: 0,
-    presentacion: "",
+    Nombre: "",
+    Marca: "",
+    Tipo: "",
+    Precio: 0,
+    Descuento: 0,
+    Stock: 0,
+    Presentacion: "",
+    Descripcion: "",
+    Activo: true,
+    requiere_orden_medica: false,
+    Codigo: "",
+    Fecha_vencimiento: "",
   });
 
-  // Tipos predefinidos de medicamentos para selección en formulario
-  const tiposMedicamentos = [
-    "Analgésico",
-    "Antiinflamatorio",
-    "Antibiótico",
-    "Antialérgico",
-    "Antihipertensivo",
-    "Antidiabético",
-    "Gastro",
-    "Hipolipemiante",
-    "Otros",
-  ];
+  // Estados para manejo de stock durante edición
+  const [stockAumento, setStockAumento] = useState(0);
+  const [stockDisminucion, setStockDisminucion] = useState(0);
+  const [stockOriginal, setStockOriginal] = useState(0);
 
-  // Cargar productos al montar el componente (simulado)
+  // Verificar autenticación al cargar
   useEffect(() => {
-    // Simular una carga de datos con retardo para imitar una API
-    const fetchProductos = () => {
-      setLoading(true);
-      setTimeout(() => {
-        setProductos(PRODUCTOS_MUESTRA);
-        setLoading(false);
-      }, 800); // 800ms de retardo simulado
-    };
+    const storedToken = localStorage.getItem("token");
+    const rol = localStorage.getItem("rol");
 
-    fetchProductos();
-  }, []);
+    if (!storedToken || rol !== "administrador") {
+      navigate("/login");
+    } else {
+      setToken(storedToken);
+      loadProductos(storedToken);
+    }
+  }, [navigate]);
+
+  // Cargar productos desde la API
+  const loadProductos = async (authToken) => {
+    setLoading(true);
+    const result = await fetchProductos(authToken);
+    if (result.data) {
+      setProductos(result.data);
+      setError(null);
+    } else {
+      setError(result.error);
+    }
+    setLoading(false);
+  };
 
   // Manejar cambios en el formulario
   const handleChange = (e) => {
@@ -173,7 +79,7 @@ export default function ProductosManagement() {
         type === "checkbox"
           ? checked
           : type === "number"
-          ? parseFloat(value) || 0
+          ? parseFloat(value)
           : value,
     });
   };
@@ -181,25 +87,32 @@ export default function ProductosManagement() {
   // Filtrar productos por búsqueda
   const filteredProductos = productos.filter(
     (producto) =>
-      producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      producto.marca.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      producto.tipo.toLowerCase().includes(searchTerm.toLowerCase())
+      producto.Nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      producto.Marca?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      producto.Tipo?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Mostrar formulario para crear
   const handleShowCreateForm = () => {
     setEditingId(null);
     setFormData({
-      nombre: "",
-      marca: "",
-      tipo: "",
-      precio: 0,
-      descuento: 0,
-      requireOrden: false,
-      descripcion: "",
-      stock: 0,
-      presentacion: "",
+      Nombre: "",
+      Marca: "",
+      Tipo: "",
+      Precio: 0,
+      Descuento: 0,
+      Stock: 0,
+      Presentacion: "",
+      Descripcion: "",
+      Activo: true,
+      requiere_orden_medica: false,
+      Codigo: "",
+      Fecha_vencimiento: "",
     });
+    // Resetear valores de stock para creación
+    setStockAumento(0);
+    setStockDisminucion(0);
+    setStockOriginal(0);
     setShowForm(true);
     setSelectedProducto(null);
   };
@@ -207,17 +120,29 @@ export default function ProductosManagement() {
   // Mostrar formulario para editar
   const handleShowEditForm = (producto) => {
     setEditingId(producto.id);
+    // Adaptar las fechas para el formato de input date
+    const fechaVencimiento = producto.Fecha_vencimiento
+      ? new Date(producto.Fecha_vencimiento).toISOString().split("T")[0]
+      : "";
+
     setFormData({
-      nombre: producto.nombre,
-      marca: producto.marca,
-      tipo: producto.tipo,
-      precio: producto.precio,
-      descuento: producto.descuento,
-      requireOrden: producto.requireOrden,
-      descripcion: producto.descripcion || "",
-      stock: producto.stock || 0,
-      presentacion: producto.presentacion || "",
+      Nombre: producto.Nombre || "",
+      Marca: producto.Marca || "",
+      Tipo: producto.Tipo || "",
+      Precio: producto.Precio || 0,
+      Descuento: producto.Descuento || 0,
+      Stock: producto.Stock || 0,
+      Presentacion: producto.Presentacion || "",
+      Descripcion: producto.Descripcion || "",
+      Activo: producto.Activo !== false,
+      requiere_orden_medica: producto.requiere_orden_medica || false,
+      Codigo: producto.Codigo || "",
+      Fecha_vencimiento: fechaVencimiento,
     });
+    // Configurar valores para edición de stock
+    setStockOriginal(producto.Stock || 0);
+    setStockAumento(0);
+    setStockDisminucion(0);
     setShowForm(true);
   };
 
@@ -225,65 +150,95 @@ export default function ProductosManagement() {
   const handleCancel = () => {
     setShowForm(false);
     setEditingId(null);
+    // Resetear valores de stock
+    setStockAumento(0);
+    setStockDisminucion(0);
+    setStockOriginal(0);
   };
 
-  // Guardar producto (crear o actualizar) - Simulado con datos locales
-  const handleSave = (e) => {
+  // Guardar producto (crear o actualizar)
+  const handleSave = async (e) => {
     e.preventDefault();
 
     // Validación básica
-    if (!formData.nombre || !formData.marca || !formData.tipo) {
+    if (!formData.Nombre || !formData.Marca || !formData.Tipo) {
       alert("Por favor complete los campos obligatorios");
       return;
     }
 
-    try {
-      if (editingId) {
-        // Actualizar producto existente (simulado)
-        setProductos(
-          productos.map((producto) =>
-            producto.id === editingId
-              ? { ...producto, ...formData, id: editingId }
-              : producto
-          )
+    // Calcular stock final si estamos editando
+    let stockFinal = formData.Stock;
+    if (editingId) {
+      stockFinal = stockOriginal + stockAumento - stockDisminucion;
+
+      // Validar que el stock no sea negativo
+      if (stockFinal < 0) {
+        alert(
+          `No se puede reducir el stock por debajo de 0. Stock actual: ${stockOriginal}, intentando reducir: ${stockDisminucion}`
         );
-        alert("Producto actualizado con éxito");
-      } else {
-        // Crear nuevo producto (simulado)
-        const nuevoId = Math.max(...productos.map((p) => p.id), 0) + 1;
-        const nuevoProducto = {
-          id: nuevoId,
-          ...formData,
-        };
-        setProductos([...productos, nuevoProducto]);
-        alert("Producto creado con éxito");
+        return;
       }
-      // Cerrar formulario
+    }
+
+    // Crear objeto con los datos actualizados
+    const dataToSave = {
+      ...formData,
+      Stock: stockFinal,
+    };
+
+    const result = await saveProducto(dataToSave, editingId, token);
+
+    if (result.success) {
+      alert(
+        editingId
+          ? "Producto actualizado con éxito"
+          : "Producto creado con éxito"
+      );
+      loadProductos(token);
       setShowForm(false);
       setEditingId(null);
-    } catch (error) {
-      console.error("Error al guardar producto:", error);
-      alert("Error al guardar el producto");
+      // Resetear valores de stock
+      setStockAumento(0);
+      setStockDisminucion(0);
+      setStockOriginal(0);
+    } else {
+      alert(`Error al guardar el producto: ${result.error}`);
     }
   };
 
-  // Eliminar producto (simulado con datos locales)
-  const handleDelete = (id) => {
-    if (window.confirm("¿Está seguro que desea eliminar este producto?")) {
-      try {
-        // Eliminar localmente
-        setProductos(productos.filter((producto) => producto.id !== id));
+  // Eliminar producto (usa el endpoint de borrado lógico)
+  const handleDelete = async (id) => {
+    if (
+      window.confirm(
+        "¿Está seguro que desea eliminar este producto? Esta acción lo desactivará."
+      )
+    ) {
+      const result = await desactivarProducto(id, token);
+
+      if (result.success) {
+        loadProductos(token);
 
         // Si el producto eliminado estaba seleccionado, deseleccionarlo
         if (selectedProducto && selectedProducto.id === id) {
           setSelectedProducto(null);
         }
 
-        alert("Producto eliminado con éxito");
-      } catch (error) {
-        console.error("Error al eliminar producto:", error);
-        alert("Error al eliminar el producto");
+        alert("Producto desactivado con éxito");
+      } else {
+        alert(result.error);
       }
+    }
+  };
+
+  // Activar un producto
+  const handleActivate = async (id) => {
+    const result = await activarProducto(id, token);
+
+    if (result.success) {
+      loadProductos(token);
+      alert("Producto activado con éxito");
+    } else {
+      alert(result.error);
     }
   };
 
@@ -293,11 +248,20 @@ export default function ProductosManagement() {
     setShowForm(false);
   };
 
-  // Formatear precio
-  const formatPrice = (price) => `$${price.toLocaleString()}`;
+  // Restricción de acceso
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando productos...</p>
+        </div>
+      </div>
+    );
+  }
 
-  // Restricción de acceso (simulado)
-  if (!isStaff) {
+  const rol = localStorage.getItem("rol");
+  if (rol !== "administrador") {
     return (
       <div className="p-8 text-center">
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 inline-block">
@@ -318,12 +282,20 @@ export default function ProductosManagement() {
     );
   }
 
-  if (loading) {
+  if (error) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando productos...</p>
+      <div className="p-8 text-center">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 inline-block">
+          <h2 className="text-xl font-semibold text-red-700 mb-2">
+            Error al cargar productos
+          </h2>
+          <p className="text-gray-700">{error}</p>
+          <button
+            onClick={() => loadProductos(token)}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg"
+          >
+            Reintentar
+          </button>
         </div>
       </div>
     );
@@ -368,43 +340,61 @@ export default function ProductosManagement() {
                   className={`flex flex-col border rounded-lg shadow-sm cursor-pointer hover:shadow p-4 ${
                     selectedProducto?.id === producto.id
                       ? "bg-green-50 border-green-500"
+                      : producto.Activo === false
+                      ? "opacity-60 bg-gray-50 border-dashed"
                       : ""
                   }`}
                   onClick={() => handleSelectProducto(producto)}
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-bold text-lg">{producto.nombre}</h3>
-                    {producto.requireOrden && (
-                      <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded text-xs">
-                        Requiere receta
+                    <h3 className="font-bold text-lg">{producto.Nombre}</h3>
+                    {producto.Activo === false && (
+                      <span className="px-2 py-0.5 bg-red-100 text-red-800 rounded text-xs">
+                        Inactivo
+                      </span>
+                    )}
+                    {producto.Fecha_vencimiento &&
+                      new Date(producto.Fecha_vencimiento) < new Date() && (
+                        <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded text-xs ml-1">
+                          Vencido
+                        </span>
+                      )}
+                  </div>
+
+                  <div className="flex gap-2 mb-2 flex-wrap">
+                    <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
+                      {producto.Marca}
+                    </span>
+                    <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs">
+                      {producto.Tipo}
+                    </span>
+                    {producto.requiere_orden_medica && (
+                      <span className="px-2 py-0.5 bg-orange-100 text-orange-800 rounded text-xs">
+                        Req. Orden Médica
+                      </span>
+                    )}
+                    {producto.Codigo && (
+                      <span className="px-2 py-0.5 bg-purple-100 text-purple-800 rounded text-xs">
+                        {producto.Codigo}
                       </span>
                     )}
                   </div>
 
-                  <div className="flex gap-2 mb-2">
-                    <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
-                      {producto.marca}
-                    </span>
-                    <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs">
-                      {producto.tipo}
-                    </span>
-                  </div>
-
                   <div className="text-sm mb-1">
-                    Stock: <span className="font-medium">{producto.stock}</span>
+                    Stock: <span className="font-medium">{producto.Stock}</span>
                   </div>
 
-                  <div className="text-sm mb-auto">{producto.presentacion}</div>
+                  <div className="text-sm mb-auto">{producto.Presentacion}</div>
 
                   <div className="flex justify-between items-center mt-3">
                     <div className="flex items-baseline">
-                      {producto.descuento > 0 && (
+                      {producto.Descuento > 0 && (
                         <span className="line-through text-gray-500 text-sm mr-1">
-                          {formatPrice(producto.precio)}
+                          {formatPrice(producto.Precio)}
                         </span>
                       )}
                       <span className="font-bold text-blue-600">
-                        {formatPrice(producto.precio - producto.descuento)}
+                        {formatPrice(producto.Precio - producto.Descuento)}
                       </span>
                     </div>
 
@@ -439,6 +429,7 @@ export default function ProductosManagement() {
                         }}
                         className="p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md"
                         title="Eliminar producto"
+                        disabled={!producto.Activo}
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -478,10 +469,11 @@ export default function ProductosManagement() {
                     </label>
                     <input
                       type="text"
-                      name="nombre"
-                      value={formData.nombre}
+                      name="Nombre"
+                      value={formData.Nombre}
                       onChange={handleChange}
                       className="w-full px-3 py-2 border rounded-md"
+                      placeholder="Ej: Ibuprofeno 500mg"
                       required
                     />
                   </div>
@@ -493,10 +485,11 @@ export default function ProductosManagement() {
                       </label>
                       <input
                         type="text"
-                        name="marca"
-                        value={formData.marca}
+                        name="Marca"
+                        value={formData.Marca}
                         onChange={handleChange}
                         className="w-full px-3 py-2 border rounded-md"
+                        placeholder="Ej: Pfizer"
                         required
                       />
                     </div>
@@ -506,14 +499,14 @@ export default function ProductosManagement() {
                         Tipo*
                       </label>
                       <select
-                        name="tipo"
-                        value={formData.tipo}
+                        name="Tipo"
+                        value={formData.Tipo}
                         onChange={handleChange}
                         className="w-full px-3 py-2 border rounded-md"
                         required
                       >
                         <option value="">Seleccionar tipo</option>
-                        {tiposMedicamentos.map((tipo) => (
+                        {TIPOS_MEDICAMENTOS.map((tipo) => (
                           <option key={tipo} value={tipo}>
                             {tipo}
                           </option>
@@ -529,8 +522,8 @@ export default function ProductosManagement() {
                       </label>
                       <input
                         type="number"
-                        name="precio"
-                        value={formData.precio}
+                        name="Precio"
+                        value={formData.Precio}
                         onChange={handleChange}
                         className="w-full px-3 py-2 border rounded-md"
                         required
@@ -544,8 +537,8 @@ export default function ProductosManagement() {
                       </label>
                       <input
                         type="number"
-                        name="descuento"
-                        value={formData.descuento}
+                        name="Descuento"
+                        value={formData.Descuento}
                         onChange={handleChange}
                         className="w-full px-3 py-2 border rounded-md"
                         min="0"
@@ -553,33 +546,132 @@ export default function ProductosManagement() {
                     </div>
                   </div>
 
+                  {!editingId ? (
+                    // Vista para creación de producto
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block mb-1 text-sm font-medium">
+                          Stock*
+                        </label>
+                        <input
+                          type="number"
+                          name="Stock"
+                          value={formData.Stock}
+                          onChange={handleChange}
+                          className="w-full px-3 py-2 border rounded-md"
+                          required
+                          min="0"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block mb-1 text-sm font-medium">
+                          Presentación
+                        </label>
+                        <input
+                          type="text"
+                          name="Presentacion"
+                          value={formData.Presentacion}
+                          onChange={handleChange}
+                          className="w-full px-3 py-2 border rounded-md"
+                          placeholder="Ej: Tabletas 500mg x 10 und"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    // Vista para edición de producto
+                    <>
+                      <div className="bg-gray-100 p-4 rounded-lg mb-4">
+                        <div className="mb-3">
+                          <span className="block text-sm font-medium text-gray-700 mb-1">
+                            Stock actual: {stockOriginal} unidades
+                          </span>
+                          <span className="block text-sm text-gray-600">
+                            Stock resultante:{" "}
+                            {stockOriginal + stockAumento - stockDisminucion}{" "}
+                            unidades
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block mb-1 text-sm font-medium text-green-700">
+                              Aumentar stock
+                            </label>
+                            <input
+                              type="number"
+                              value={stockAumento}
+                              onChange={(e) =>
+                                setStockAumento(parseInt(e.target.value) || 0)
+                              }
+                              className="w-full px-3 py-2 border border-green-300 rounded-md focus:border-green-500 focus:ring-green-500"
+                              min="0"
+                              placeholder="Cantidad a agregar"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block mb-1 text-sm font-medium text-red-700">
+                              Disminuir stock
+                            </label>
+                            <input
+                              type="number"
+                              value={stockDisminucion}
+                              onChange={(e) =>
+                                setStockDisminucion(
+                                  parseInt(e.target.value) || 0
+                                )
+                              }
+                              className="w-full px-3 py-2 border border-red-300 rounded-md focus:border-red-500 focus:ring-red-500"
+                              min="0"
+                              max={stockOriginal + stockAumento}
+                              placeholder="Cantidad a quitar"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block mb-1 text-sm font-medium">
+                          Presentación
+                        </label>
+                        <input
+                          type="text"
+                          name="Presentacion"
+                          value={formData.Presentacion}
+                          onChange={handleChange}
+                          className="w-full px-3 py-2 border rounded-md"
+                          placeholder="Ej: Tabletas 500mg x 10 und"
+                        />
+                      </div>
+                    </>
+                  )}
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block mb-1 text-sm font-medium">
-                        Stock*
+                        Código
                       </label>
                       <input
-                        type="number"
-                        name="stock"
-                        value={formData.stock}
+                        type="text"
+                        name="Codigo"
+                        value={formData.Codigo}
                         onChange={handleChange}
                         className="w-full px-3 py-2 border rounded-md"
-                        required
-                        min="0"
+                        placeholder="Ej: MED001"
                       />
                     </div>
 
                     <div>
                       <label className="block mb-1 text-sm font-medium">
-                        Presentación
+                        Fecha de vencimiento
                       </label>
                       <input
-                        type="text"
-                        name="presentacion"
-                        value={formData.presentacion}
+                        type="date"
+                        name="Fecha_vencimiento"
+                        value={formData.Fecha_vencimiento}
                         onChange={handleChange}
                         className="w-full px-3 py-2 border rounded-md"
-                        placeholder="Ej: Tabletas 500mg x 10 und"
                       />
                     </div>
                   </div>
@@ -589,26 +681,46 @@ export default function ProductosManagement() {
                       Descripción
                     </label>
                     <textarea
-                      name="descripcion"
-                      value={formData.descripcion}
+                      name="Descripcion"
+                      value={formData.Descripcion}
                       onChange={handleChange}
                       className="w-full px-3 py-2 border rounded-md"
                       rows="3"
+                      placeholder="Ej: Medicamento ideal para dolores de cabeza"
                     />
                   </div>
 
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="requireOrden"
-                      name="requireOrden"
-                      checked={formData.requireOrden}
-                      onChange={handleChange}
-                      className="mr-2"
-                    />
-                    <label htmlFor="requireOrden" className="text-sm">
-                      Requiere orden médica
-                    </label>
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="Activo"
+                        name="Activo"
+                        checked={formData.Activo}
+                        onChange={handleChange}
+                        className="mr-2"
+                      />
+                      <label htmlFor="Activo" className="text-sm">
+                        Producto Activo
+                      </label>
+                    </div>
+
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="requiere_orden_medica"
+                        name="requiere_orden_medica"
+                        checked={formData.requiere_orden_medica}
+                        onChange={handleChange}
+                        className="mr-2"
+                      />
+                      <label
+                        htmlFor="requiere_orden_medica"
+                        className="text-sm"
+                      >
+                        Requiere Orden Médica
+                      </label>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 pt-4">
@@ -638,18 +750,28 @@ export default function ProductosManagement() {
 
                   <div className="mb-4">
                     <h3 className="text-2xl font-bold text-gray-800">
-                      {selectedProducto.nombre}
+                      {selectedProducto.Nombre}
                     </h3>
                     <div className="flex flex-wrap gap-2 mt-1">
                       <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-sm">
-                        {selectedProducto.marca}
+                        {selectedProducto.Marca}
                       </span>
                       <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded text-sm">
-                        {selectedProducto.tipo}
+                        {selectedProducto.Tipo}
                       </span>
-                      {selectedProducto.requireOrden && (
-                        <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded text-sm">
-                          Requiere orden médica
+                      {selectedProducto.requiere_orden_medica && (
+                        <span className="px-2 py-0.5 bg-orange-100 text-orange-800 rounded text-sm">
+                          Requiere Orden Médica
+                        </span>
+                      )}
+                      {!selectedProducto.Activo && (
+                        <span className="px-2 py-0.5 bg-red-100 text-red-800 rounded text-sm">
+                          Inactivo
+                        </span>
+                      )}
+                      {selectedProducto.Codigo && (
+                        <span className="px-2 py-0.5 bg-purple-100 text-purple-800 rounded text-sm">
+                          Código: {selectedProducto.Codigo}
                         </span>
                       )}
                     </div>
@@ -661,7 +783,7 @@ export default function ProductosManagement() {
                         Presentación:
                       </span>
                       <span className="font-medium">
-                        {selectedProducto.presentacion || "No especificada"}
+                        {selectedProducto.Presentacion || "No especificada"}
                       </span>
                     </div>
 
@@ -670,42 +792,64 @@ export default function ProductosManagement() {
                         Stock disponible:
                       </span>
                       <span className="font-medium">
-                        {selectedProducto.stock}
+                        {selectedProducto.Stock}
                       </span>{" "}
                       unidades
                     </div>
+
+                    {selectedProducto.Fecha_vencimiento && (
+                      <div className="mb-3">
+                        <span className="block text-sm text-gray-500">
+                          Fecha de vencimiento:
+                        </span>
+                        <span
+                          className={`font-medium ${
+                            new Date(selectedProducto.Fecha_vencimiento) <
+                            new Date()
+                              ? "text-red-600"
+                              : ""
+                          }`}
+                        >
+                          {new Date(
+                            selectedProducto.Fecha_vencimiento
+                          ).toLocaleDateString()}
+                          {new Date(selectedProducto.Fecha_vencimiento) <
+                            new Date() && " (Vencido)"}
+                        </span>
+                      </div>
+                    )}
 
                     <div className="mb-3">
                       <span className="block text-sm text-gray-500">
                         Precio:
                       </span>
                       <div className="flex items-baseline">
-                        {selectedProducto.descuento > 0 && (
+                        {selectedProducto.Descuento > 0 && (
                           <span className="line-through text-gray-500 mr-2">
-                            {formatPrice(selectedProducto.precio)}
+                            {formatPrice(selectedProducto.Precio)}
                           </span>
                         )}
                         <span className="text-xl font-bold text-blue-600">
                           {formatPrice(
-                            selectedProducto.precio - selectedProducto.descuento
+                            selectedProducto.Precio - selectedProducto.Descuento
                           )}
                         </span>
-                        {selectedProducto.descuento > 0 && (
+                        {selectedProducto.Descuento > 0 && (
                           <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs">
-                            Descuento: {formatPrice(selectedProducto.descuento)}
+                            Descuento: {formatPrice(selectedProducto.Descuento)}
                           </span>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  {selectedProducto.descripcion && (
+                  {selectedProducto.Descripcion && (
                     <div className="mb-6">
                       <span className="block text-sm text-gray-500 mb-1">
                         Descripción:
                       </span>
                       <p className="text-gray-700">
-                        {selectedProducto.descripcion}
+                        {selectedProducto.Descripcion}
                       </p>
                     </div>
                   )}
@@ -717,12 +861,21 @@ export default function ProductosManagement() {
                     >
                       Editar Producto
                     </Button>
-                    <Button
-                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md"
-                      onClick={() => handleDelete(selectedProducto.id)}
-                    >
-                      Eliminar
-                    </Button>
+                    {selectedProducto.Activo ? (
+                      <Button
+                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md"
+                        onClick={() => handleDelete(selectedProducto.id)}
+                      >
+                        Desactivar
+                      </Button>
+                    ) : (
+                      <Button
+                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md"
+                        onClick={() => handleActivate(selectedProducto.id)}
+                      >
+                        Activar
+                      </Button>
+                    )}
                   </div>
                 </div>
               )

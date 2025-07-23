@@ -10,10 +10,16 @@ import productosImg from "../assets/productos.png";
 export default function AdminDashboard() {
   const navigate = useNavigate();
 
-  const isStaff = localStorage.getItem("is_staff") === "true";
+  const rol = localStorage.getItem("rol");
 
-  if (!isStaff) {
-    return <p>No tienes permiso para acceder a esta sección.</p>;
+  if (rol !== "administrador") {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p className="text-gray-600">
+          No tienes permiso para acceder a esta sección. Solo administradores.
+        </p>
+      </div>
+    );
   }
 
   const options = [
@@ -22,7 +28,7 @@ export default function AdminDashboard() {
     { label: "Servicios", icon: serviciosImg, path: "/servicios" },
     { label: "Usuarios", icon: usuariosImg, path: "/clienteManagement" },
     { label: "Productos", icon: productosImg, path: "/producto" },
-    { label: "Reseñas", icon: resenasImg, path: "/resenas" },
+    { label: "Facturas", icon: resenasImg, path: "/facturas" },
   ];
 
   return (

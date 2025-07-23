@@ -5,11 +5,29 @@ import {
   GetAllServicios,
   CreateServicio,
   UpdateServicio,
-  DeleteServicio,
+  DeactivateServicio,
+  ActivateServicio,
+  DeleteServicioPermanent,
 } from "../api/servicio.api";
 
 export default function ServicioEditor() {
   const navigate = useNavigate();
+  const [authorized, setAuthorized] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [showInactive, setShowInactive] = useState(false); // Estado para mostrar/ocultar servicios inactivos
+
+  // Verificar autenticación
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const rol = localStorage.getItem("rol");
+
+    if (!token || rol !== "administrador") {
+      navigate("/login");
+    } else {
+      setAuthorized(true);
+    }
+    setLoading(false);
+  }, [navigate]);
 
   // Estados
   const [servicios, setServicios] = useState([]);
@@ -21,20 +39,37 @@ export default function ServicioEditor() {
     etiqueta: "",
     prioridad: false,
   });
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   // Cargar servicios al montar el componente
   useEffect(() => {
-    fetchServicios();
-  }, []);
+    if (authorized) {
+      fetchServicios();
+    }
+  }, [authorized]);
 
   // Función para cargar servicios
   const fetchServicios = async () => {
     try {
       setLoading(true);
       const response = await GetAllServicios();
-      setServicios(response.data);
+
+      // Mapear los datos del backend a nuestro formato frontend
+      const adaptedData = response.data.map((servicio) => ({
+        id: servicio.id,
+        etiqueta: servicio.Nombre,
+        descripcion: servicio.Descripcion,
+        prioridad: servicio.Prioridad > 0,
+        estado: servicio.Estado,
+      }));
+
+      // Ordenar: primero activos, luego inactivos
+      adaptedData.sort((a, b) => {
+        if (a.estado === b.estado) return 0;
+        return a.estado ? -1 : 1;
+      });
+
+      setServicios(adaptedData);
       setError(null);
     } catch (err) {
       console.error("Error al cargar servicios:", err);
@@ -102,20 +137,58 @@ export default function ServicioEditor() {
       setEditingId(null);
     } catch (error) {
       console.error("Error al guardar servicio:", error);
-      alert("Error al guardar el servicio");
+      alert(
+        `Error al guardar el servicio: ${
+          error.response?.data?.detail || error.message
+        }`
+      );
     }
   };
 
-  // Eliminar servicio
+  // Desactivar servicio
+  const handleDeactivate = async (id) => {
+    if (window.confirm("¿Está seguro que desea desactivar este servicio?")) {
+      try {
+        await DeactivateServicio(id);
+        fetchServicios();
+        alert("Servicio desactivado con éxito");
+      } catch (error) {
+        console.error("Error al desactivar servicio:", error);
+        alert("Error al desactivar el servicio");
+      }
+    }
+  };
+
+  // Activar servicio
+  const handleActivate = async (id) => {
+    if (window.confirm("¿Está seguro que desea activar este servicio?")) {
+      try {
+        await ActivateServicio(id);
+        fetchServicios();
+        alert("Servicio activado con éxito");
+      } catch (error) {
+        console.error("Error al activar servicio:", error);
+        alert("Error al activar el servicio");
+      }
+    }
+  };
+
+  // Eliminar servicio permanentemente
   const handleDelete = async (id) => {
     if (window.confirm("¿Está seguro que desea eliminar este servicio?")) {
       try {
-        await DeleteServicio(id);
+        await DeleteServicioPermanent(id);
         fetchServicios();
         alert("Servicio eliminado con éxito");
+        // Si el servicio eliminado era el seleccionado, deseleccionarlo
+        if (selectedServicio && selectedServicio.id === id) {
+          setSelectedServicio(null);
+        }
       } catch (error) {
         console.error("Error al eliminar servicio:", error);
-        alert("Error al eliminar el servicio");
+        alert(
+          "Error al eliminar el servicio. Puede que existan registros relacionados que impidan su eliminación."
+        );
       }
     }
   };
@@ -125,10 +198,21 @@ export default function ServicioEditor() {
     setSelectedServicio(servicio);
   };
 
+  // Filtrar servicios según el estado de showInactive
+  const serviciosFiltrados = showInactive
+    ? servicios
+    : servicios.filter((servicio) => servicio.estado);
+
   if (loading)
     return <div className="text-center mt-8">Cargando servicios...</div>;
   if (error)
     return <div className="text-center mt-8 text-red-500">{error}</div>;
+  if (!authorized)
+    return (
+      <p className="text-center mt-8">
+        No tienes permiso para acceder a esta sección.
+      </p>
+    );
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
@@ -138,41 +222,63 @@ export default function ServicioEditor() {
         <div className="flex-1 bg-white rounded-xl shadow p-4 md:p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-semibold">Gestión de Servicios</h2>
-            <Button
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg"
-              onClick={handleShowCreateForm}
-            >
-              Nuevo Servicio
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg"
+                onClick={handleShowCreateForm}
+              >
+                Nuevo Servicio
+              </Button>
+              <Button
+                className={`px-4 py-2 ${
+                  showInactive
+                    ? "bg-purple-600 hover:bg-purple-700"
+                    : "bg-yellow-600 hover:bg-yellow-700"
+                } text-white rounded-lg`}
+                onClick={() => setShowInactive(!showInactive)}
+              >
+                {showInactive ? "Ocultar inactivos" : "Mostrar inactivos"}
+              </Button>
+            </div>
           </div>
 
           {/* Lista de servicios */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {servicios.length === 0 ? (
+            {serviciosFiltrados.length === 0 ? (
               <p className="col-span-full text-center text-gray-500 py-8">
                 No hay servicios disponibles
               </p>
             ) : (
-              servicios.map((servicio) => (
+              serviciosFiltrados.map((servicio) => (
                 <div
                   key={servicio.id}
-                  className={`flex flex-col p-5 border rounded-lg shadow-sm min-h-[240px] ${
-                    selectedServicio?.id === servicio.id
-                      ? "bg-green-50 border-green-500"
-                      : ""
-                  }`}
+                  className={`flex flex-col p-5 border rounded-lg shadow-sm min-h-[240px] 
+                    ${
+                      selectedServicio?.id === servicio.id
+                        ? "bg-green-50 border-green-500"
+                        : ""
+                    }
+                    ${
+                      !servicio.estado
+                        ? "opacity-70 border-dashed border-gray-400"
+                        : ""
+                    }`}
                 >
-                  <Button
-                    className="w-full px-2 py-1 bg-zinc-400 hover:bg-slate-500 text-sm text-white rounded-lg"
-                    onClick={() => {
-                      handleSelectServicio(servicio);
-                      navigate("/schedules", {
-                        state: { servicio: servicio.etiqueta },
-                      });
-                    }}
-                  >
-                    {servicio.etiqueta}
-                  </Button>
+                  <div className="flex items-center justify-between mb-2">
+                    <Button
+                      className="flex-1 px-2 py-1 bg-zinc-400 hover:bg-slate-500 text-sm text-white rounded-lg"
+                      onClick={() => {
+                        handleSelectServicio(servicio);
+                      }}
+                    >
+                      {servicio.etiqueta}
+                    </Button>
+                    {!servicio.estado && (
+                      <span className="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                        Inactivo
+                      </span>
+                    )}
+                  </div>
 
                   <p className="text-lg text-gray-600 flex-grow my-4 line-clamp-3">
                     {servicio.descripcion}
@@ -195,7 +301,7 @@ export default function ServicioEditor() {
 
                     <div className="grid grid-cols-2 gap-2 w-full">
                       <Button
-                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2 rounded-md w-full flex justify-center items-center"
+                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-2 rounded-md w-full flex justify-center items-center"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleShowEditForm(servicio);
@@ -203,8 +309,34 @@ export default function ServicioEditor() {
                       >
                         Editar
                       </Button>
+
+                      {servicio.estado ? (
+                        <Button
+                          className="bg-orange-500 hover:bg-orange-600 text-white text-xs px-2 py-2 rounded-md w-full flex justify-center items-center"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeactivate(servicio.id);
+                          }}
+                        >
+                          Desactivar
+                        </Button>
+                      ) : (
+                        <Button
+                          className="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-2 rounded-md w-full flex justify-center items-center"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleActivate(servicio.id);
+                          }}
+                        >
+                          Activar
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Botón de eliminación permanente */}
+                    <div className="mt-2 w-full">
                       <Button
-                        className="bg-red-600 hover:bg-red-700 text-white text-xs px-4 py-2 rounded-md w-full flex justify-center items-center"
+                        className="bg-red-700 hover:bg-red-800 text-white text-xs px-2 py-2 rounded-md w-full flex justify-center items-center"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDelete(servicio.id);
@@ -224,6 +356,11 @@ export default function ServicioEditor() {
             <div className="lg:hidden mt-6 pt-6 border-t flex flex-col items-center space-y-4">
               <div className="w-full bg-green-600 text-white px-4 py-2 rounded-lg text-center font-medium">
                 Servicio: {selectedServicio.etiqueta}
+                {!selectedServicio.estado && (
+                  <span className="ml-2 bg-red-700 text-white text-xs px-2 py-1 rounded-full">
+                    Inactivo
+                  </span>
+                )}
               </div>
               <div className="bg-yellow-700 text-white font-bold rounded-lg p-4 w-48 text-center">
                 <span className="block">
@@ -306,8 +443,15 @@ export default function ServicioEditor() {
                     Detalles del servicio
                   </h2>
 
-                  <div className="w-full bg-green-600 text-white px-6 py-3 rounded-lg text-center font-medium text-lg">
+                  <div className="w-full bg-green-600 text-white px-6 py-3 rounded-lg text-center font-medium text-lg relative">
                     {selectedServicio.etiqueta}
+                    {!selectedServicio.estado && (
+                      <div className="absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/3">
+                        <span className="bg-red-700 text-white text-xs px-2 py-1 rounded-full">
+                          Inactivo
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="w-full bg-gray-100 p-4 rounded-lg">
@@ -340,15 +484,28 @@ export default function ServicioEditor() {
                     >
                       Editar Servicio
                     </Button>
+
+                    {selectedServicio.estado ? (
+                      <Button
+                        className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md"
+                        onClick={() => handleDeactivate(selectedServicio.id)}
+                      >
+                        Desactivar
+                      </Button>
+                    ) : (
+                      <Button
+                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md"
+                        onClick={() => handleActivate(selectedServicio.id)}
+                      >
+                        Activar
+                      </Button>
+                    )}
+
                     <Button
-                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md"
-                      onClick={() => {
-                        navigate("/schedules", {
-                          state: { servicio: selectedServicio.etiqueta },
-                        });
-                      }}
+                      className="col-span-2 bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded-md mt-2"
+                      onClick={() => handleDelete(selectedServicio.id)}
                     >
-                      Programar
+                      Eliminar
                     </Button>
                   </div>
                 </div>
