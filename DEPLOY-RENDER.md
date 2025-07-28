@@ -39,7 +39,7 @@ git push origin production
    - **Branch**: `production`
    - **Root Directory**: `backend`
    - **Runtime**: Python 3
-   - **Build Command**: `pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate`
+   - **Build Command**: `pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate && python create_superuser.py`
    - **Start Command**: `gunicorn DS1.wsgi:application`
 
 ### 5. Variables de Entorno
