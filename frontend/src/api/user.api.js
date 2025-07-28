@@ -2,12 +2,16 @@ import axios from "axios";
 
 // API URLs para todos los endpoints de usuarios
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+console.log("API_BASE_URL configurada:", API_BASE_URL);
+
 const API_URLS = {
   users: `${API_BASE_URL}/users/`,
   clients: `${API_BASE_URL}/clients/`,
   u_admin: `${API_BASE_URL}/u_admin/`,
   employee: `${API_BASE_URL}/employee/`,
 };
+
+console.log("API_URLS configuradas:", API_URLS);
 
 // Tipos de roles disponibles
 export const USER_ROLES = {
@@ -19,7 +23,10 @@ export const USER_ROLES = {
 // Configurar header de autorización
 const getAuthHeaders = () => {
   const token = localStorage.getItem("authToken");
-  return token ? { Authorization: `Token ${token}` } : {};
+  console.log("getAuthHeaders - token encontrado:", token);
+  const headers = token ? { Authorization: `Token ${token}` } : {};
+  console.log("getAuthHeaders - headers generados:", headers);
+  return headers;
 };
 
 // === FUNCIONES PRINCIPALES (SOLO USERS ENDPOINT) ===
@@ -28,13 +35,38 @@ const getAuthHeaders = () => {
 export const GetAllUsersFromAllEndpoints = async () => {
   try {
     const headers = getAuthHeaders();
+    console.log("GetAllUsersFromAllEndpoints - iniciando peticiones con headers:", headers);
 
     const [usersResponse, clientsResponse, adminsResponse, employeesResponse] =
       await Promise.all([
-        axios.get(API_URLS.users, { headers }),
-        axios.get(API_URLS.clients, { headers }),
-        axios.get(API_URLS.u_admin, { headers }),
-        axios.get(API_URLS.employee, { headers }),
+        axios.get(API_URLS.users, { headers }).then(res => {
+          console.log("Respuesta de users:", res.data);
+          return res;
+        }).catch(err => {
+          console.error("Error en users endpoint:", err.response?.data || err.message);
+          throw err;
+        }),
+        axios.get(API_URLS.clients, { headers }).then(res => {
+          console.log("Respuesta de clients:", res.data);
+          return res;
+        }).catch(err => {
+          console.error("Error en clients endpoint:", err.response?.data || err.message);
+          throw err;
+        }),
+        axios.get(API_URLS.u_admin, { headers }).then(res => {
+          console.log("Respuesta de u_admin:", res.data);
+          return res;
+        }).catch(err => {
+          console.error("Error en u_admin endpoint:", err.response?.data || err.message);
+          throw err;
+        }),
+        axios.get(API_URLS.employee, { headers }).then(res => {
+          console.log("Respuesta de employee:", res.data);
+          return res;
+        }).catch(err => {
+          console.error("Error en employee endpoint:", err.response?.data || err.message);
+          throw err;
+        }),
       ]);
 
     // Mapear datos de usuarios principales con validación
