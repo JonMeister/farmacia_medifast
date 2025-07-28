@@ -25,7 +25,8 @@ apiClient.interceptors.request.use(
 export const getServicios = async () => {
   try {
     const response = await apiClient.get("/servicios/");
-    return response.data;
+    console.log("Respuesta de servicios:", response.data);
+    return response.data.results || response.data;
   } catch (error) {
     console.error("Error al obtener servicios:", error);
     throw error;
@@ -61,7 +62,8 @@ export const getTurnoActivoCliente = async (cedula) => {
 export const getColaTurnos = async () => {
   try {
     const response = await apiClient.get("/turnos/cola_turnos/");
-    return response.data;
+    console.log("Respuesta de cola_turnos:", response.data);
+    return response.data.results || response.data;
   } catch (error) {
     console.error("Error al obtener cola de turnos:", error);
     throw error;
@@ -73,7 +75,8 @@ export const getTurnoActualCaja = async (cajaId) => {
     const response = await apiClient.get(
       `/turnos/turno_actual_caja/?caja_id=${cajaId}`
     );
-    return response.data;
+    console.log("Respuesta de turno_actual_caja:", response.data);
+    return response.data.results || response.data;
   } catch (error) {
     console.error("Error al obtener turno actual de caja:", error);
     throw error;
@@ -83,7 +86,8 @@ export const getTurnoActualCaja = async (cajaId) => {
 export const getEstadoCajas = async () => {
   try {
     const response = await apiClient.get("/turnos/estado_cajas/");
-    return response.data;
+    console.log("Respuesta de estado_cajas:", response.data);
+    return response.data.results || response.data;
   } catch (error) {
     console.error("Error al obtener estado de cajas:", error);
     throw error;

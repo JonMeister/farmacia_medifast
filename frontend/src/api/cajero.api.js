@@ -25,7 +25,8 @@ apiClient.interceptors.request.use(
 export const getMiCajaInfo = async () => {
   try {
     const response = await apiClient.get("/turnos/mi_caja_info/");
-    return response.data;
+    console.log("Respuesta de mi_caja_info:", response.data);
+    return response.data.results || response.data;
   } catch (error) {
     console.error("Error al obtener información de caja:", error);
     throw error;
@@ -79,11 +80,22 @@ export const toggleCajaEstado = async () => {
 
 // API para obtener productos desde el backend
 export const getProductos = async () => {
+  console.log("🔍 Iniciando getProductos...");
+  
   try {
     const response = await apiClient.get("/producto/");
-    return response.data;
+    console.log("✅ Respuesta completa getProductos:", response);
+    console.log("📄 response.data:", response.data);
+    
+    // Manejar respuesta paginada del backend
+    const data = response.data.results || response.data;
+    console.log("🔄 Datos extraídos:", data);
+    console.log("📊 Tipo de datos:", Array.isArray(data) ? 'Array' : typeof data);
+    console.log("📝 Cantidad de elementos:", Array.isArray(data) ? data.length : 'No es array');
+    
+    return data; // Retornar directamente el array
   } catch (error) {
-    console.error("Error al obtener productos:", error);
+    console.error("❌ Error en getProductos:", error);
     throw error;
   }
 };

@@ -57,8 +57,16 @@ export default function CajasView() {
   // Obtener cajas
   const fetchCajas = async () => {
     try {
-      const response = await GetAllCajas();
-      setCajas(response.data);
+      const cajas = await GetAllCajas();
+      console.log("Datos de cajas recibidos:", cajas);
+      
+      // Verificar que tenemos un array
+      if (!Array.isArray(cajas)) {
+        console.error("Los datos de cajas recibidos no son un array:", cajas);
+        return;
+      }
+      
+      setCajas(cajas);
       setLoading(false);
     } catch (error) {
       console.error("Error al cargar cajas:", error);
@@ -71,9 +79,16 @@ export default function CajasView() {
     try {
       console.log("Obteniendo usuarios disponibles...");
       console.log("Token en localStorage:", localStorage.getItem("authToken"));
-      const response = await GetUsuariosDisponibles();
-      console.log("Usuarios disponibles obtenidos:", response.data);
-      setUsuariosDisponibles(response.data);
+      const usuarios = await GetUsuariosDisponibles();
+      console.log("Usuarios disponibles obtenidos:", usuarios);
+      
+      // Verificar que tenemos un array
+      if (!Array.isArray(usuarios)) {
+        console.error("Los datos de usuarios recibidos no son un array:", usuarios);
+        return;
+      }
+      
+      setUsuariosDisponibles(usuarios);
     } catch (error) {
       console.error("Error al cargar usuarios disponibles:", error);
       console.error("Response status:", error.response?.status);
@@ -85,9 +100,16 @@ export default function CajasView() {
   const fetchTodosLosEmpleados = async () => {
     try {
       console.log("Obteniendo todos los empleados...");
-      const response = await GetTodosLosEmpleados();
-      console.log("Todos los empleados obtenidos:", response.data);
-      setTodosLosEmpleados(response.data);
+      const empleados = await GetTodosLosEmpleados();
+      console.log("Todos los empleados obtenidos:", empleados);
+      
+      // Verificar que tenemos un array
+      if (!Array.isArray(empleados)) {
+        console.error("Los datos de empleados recibidos no son un array:", empleados);
+        return;
+      }
+      
+      setTodosLosEmpleados(empleados);
     } catch (error) {
       console.error("Error al cargar todos los empleados:", error);
       console.error("Response status:", error.response?.status);

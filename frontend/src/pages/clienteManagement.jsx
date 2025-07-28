@@ -61,12 +61,15 @@ export default function ClienteManagement() {
   const loadAllUsers = async () => {
     try {
       setLoading(true);
+      console.log("Iniciando carga de usuarios...");
       const data = await GetAllUsersFromAllEndpoints();
+      console.log("Datos recibidos del backend:", data);
       setUsers(data);
       setError(null);
+      console.log("Estado de users actualizado:", data);
     } catch (err) {
       console.error("Error al cargar usuarios:", err);
-      setError("Error al cargar los usuarios");
+      setError("Error al cargar los usuarios: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -121,7 +124,10 @@ export default function ClienteManagement() {
 
   // Obtener usuarios del endpoint actual con filtro de búsqueda
   const getCurrentUsers = () => {
+    console.log("getCurrentUsers - currentEndpoint:", currentEndpoint);
+    console.log("getCurrentUsers - users object:", users);
     const allUsers = users[currentEndpoint] || [];
+    console.log("getCurrentUsers - allUsers:", allUsers);
 
     if (!searchTerm) {
       return allUsers;

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import medifastLogo from "../assets/medifast_logo.png";
 
 export default function Login() {
   const [cc, setCc] = useState("");
@@ -96,7 +97,7 @@ export default function Login() {
       <main className="flex flex-1 items-center justify-center">
         <div className="bg-white shadow-lg rounded-xl p-8 w-full max-w-sm">
           <img
-            src="src/assets/medifast_logo.png"
+            src={medifastLogo}
             alt="Logo"
             className="w-40 mx-auto mb-6"
           />

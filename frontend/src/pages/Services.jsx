@@ -52,10 +52,18 @@ export default function ServicioEditor() {
   const fetchServicios = async () => {
     try {
       setLoading(true);
-      const response = await GetAllServicios();
+      const serviciosData = await GetAllServicios();
+      console.log("Datos de servicios recibidos:", serviciosData);
+
+      // Verificar que tenemos un array
+      if (!Array.isArray(serviciosData)) {
+        console.error("Los datos recibidos no son un array:", serviciosData);
+        setError("Formato de datos incorrecto");
+        return;
+      }
 
       // Mapear los datos del backend a nuestro formato frontend
-      const adaptedData = response.data.map((servicio) => ({
+      const adaptedData = serviciosData.map((servicio) => ({
         id: servicio.id,
         etiqueta: servicio.Nombre,
         descripcion: servicio.Descripcion,

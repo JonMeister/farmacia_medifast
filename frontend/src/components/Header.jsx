@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
+import medifastLogo from "../assets/medifast_logo.png";
 
 export default function Header() {
   const navigate = useNavigate();
@@ -38,7 +39,7 @@ export default function Header() {
     <header className="bg-white p-4 flex justify-between items-center mb-8">
       <div className="flex items-center">
         <img
-          src="src/assets/medifast_logo.png"
+          src={medifastLogo}
           alt="Logo"
           className="h-9 w-auto mr-2"
         />
