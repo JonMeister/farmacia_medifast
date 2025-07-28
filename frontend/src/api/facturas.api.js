@@ -50,8 +50,11 @@ export const getFacturas = async () => {
   try {
     console.log("🔄 Llamando API getFacturas...");
     const response = await apiClient.get("/facturas/");
-    console.log("📦 Facturas recibidas:", response.data?.length || 0);
-    return response.data;
+    console.log("📦 Respuesta completa de facturas:", response.data);
+    // Manejar respuesta paginada del backend
+    const facturas = response.data.results || response.data;
+    console.log("📦 Facturas procesadas:", facturas?.length || 0);
+    return facturas;
   } catch (error) {
     console.error("❌ Error al obtener facturas:", error);
 
@@ -76,7 +79,7 @@ export const getFacturasPorTurno = async (turnoId) => {
     const response = await apiClient.get(
       `/facturas/por_turno/?turno_id=${turnoId}`
     );
-    return response.data;
+    return response.data.results || response.data;
   } catch (error) {
     console.error("Error al obtener facturas por turno:", error);
     throw error;
@@ -89,7 +92,7 @@ export const getFacturasPorCaja = async (cajaId) => {
     const response = await apiClient.get(
       `/facturas/por_caja/?caja_id=${cajaId}`
     );
-    return response.data;
+    return response.data.results || response.data;
   } catch (error) {
     console.error("Error al obtener facturas por caja:", error);
     throw error;
@@ -100,7 +103,7 @@ export const getFacturasPorCaja = async (cajaId) => {
 export const getFacturasPorFecha = async (fecha) => {
   try {
     const response = await apiClient.get(`/facturas/por_fecha/?fecha=${fecha}`);
-    return response.data;
+    return response.data.results || response.data;
   } catch (error) {
     console.error("Error al obtener facturas por fecha:", error);
     throw error;
@@ -113,7 +116,7 @@ export const getReporteVentas = async (fechaInicio, fechaFin) => {
     const response = await apiClient.get(
       `/facturas/reporte_ventas/?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`
     );
-    return response.data;
+    return response.data.results || response.data;
   } catch (error) {
     console.error("Error al obtener reporte de ventas:", error);
     throw error;

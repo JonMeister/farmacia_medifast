@@ -25,7 +25,10 @@ export const fetchProductos = async (authToken) => {
         Authorization: `Token ${authToken}`,
       },
     });
-    return { data: response.data, error: null };
+    console.log("Respuesta de productos:", response.data);
+    // Manejar respuesta paginada del backend
+    const productos = response.data.results || response.data;
+    return { data: productos, error: null };
   } catch (err) {
     console.error("Error al cargar productos:", err);
     return { data: null, error: "No se pudieron cargar los productos" };

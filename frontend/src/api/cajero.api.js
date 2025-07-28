@@ -25,7 +25,8 @@ apiClient.interceptors.request.use(
 export const getMiCajaInfo = async () => {
   try {
     const response = await apiClient.get("/turnos/mi_caja_info/");
-    return response.data;
+    console.log("Respuesta de mi_caja_info:", response.data);
+    return response.data.results || response.data;
   } catch (error) {
     console.error("Error al obtener información de caja:", error);
     throw error;
