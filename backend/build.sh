@@ -1,7 +1,5 @@
-#!/usr/bin/env bash
-# Render build script
-
-set -o errexit  # Exit on error
+#!/bin/bash
+# Build script for Render
 
 echo "Installing dependencies..."
 pip install --upgrade pip
