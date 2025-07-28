@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
 # Render build script
 
-# Instalar dependencias
+set -o errexit  # Exit on error
+
+echo "Installing dependencies..."
+pip install --upgrade pip
 pip install -r requirements.txt
 
-# Ejecutar migraciones
+echo "Collecting static files..."
+python manage.py collectstatic --noinput
+
+echo "Running migrations..."
 python manage.py migrate
 
-# Recopilar archivos estáticos
-python manage.py collectstatic --noinput
+echo "Build completed successfully!"
