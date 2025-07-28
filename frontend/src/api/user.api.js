@@ -1,11 +1,12 @@
 import axios from "axios";
 
 // API URLs para todos los endpoints de usuarios
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 const API_URLS = {
-  users: "http://127.0.0.1:8000/api/users/",
-  clients: "http://127.0.0.1:8000/api/clients/",
-  u_admin: "http://127.0.0.1:8000/api/u_admin/",
-  employee: "http://127.0.0.1:8000/api/employee/",
+  users: `${API_BASE_URL}/users/`,
+  clients: `${API_BASE_URL}/clients/`,
+  u_admin: `${API_BASE_URL}/u_admin/`,
+  employee: `${API_BASE_URL}/employee/`,
 };
 
 // Tipos de roles disponibles

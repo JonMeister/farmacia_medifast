@@ -47,7 +47,8 @@ export default function Estadisticas() {
   const cargarDatos = useCallback(async () => {
     setLoading(true);
     try {
-      const baseURL = "http://127.0.0.1:8000/api/estadisticas";
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+      const baseURL = `${API_BASE_URL}/estadisticas`;
       const params = { periodo };
       // Simplified config for testing (AllowAny backend)
       const axiosConfig = {

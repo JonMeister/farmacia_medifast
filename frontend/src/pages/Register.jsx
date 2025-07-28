@@ -71,8 +71,10 @@ export default function Register() {
       return;
     }
 
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+
     try {
-      const response = await axios.post("http://127.0.0.1:8000/api/register/", {
+      const response = await axios.post(`${API_BASE_URL}/register/`, {
         cc: Number(formData.cc),
         first_name: formData.first_name,
         last_name: formData.last_name,
