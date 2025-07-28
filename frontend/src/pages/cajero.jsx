@@ -94,6 +94,13 @@ export default function Cajero() {
 
   // Filtrar productos según búsqueda y orden médica
   useEffect(() => {
+    // Verificar que productos sea un array antes de filtrar
+    if (!Array.isArray(productos)) {
+      console.error("productos no es un array:", productos);
+      setProductosFiltrados([]);
+      return;
+    }
+
     let productosDisponibles = productos;
 
     // Si no hay orden médica, filtrar productos que la requieren
@@ -203,9 +210,19 @@ export default function Cajero() {
   const cargarProductos = async () => {
     try {
       const productosData = await getProductos();
+      console.log("Productos recibidos:", productosData);
+      
+      // Verificar que tenemos un array
+      if (!Array.isArray(productosData)) {
+        console.error("Los datos de productos recibidos no son un array:", productosData);
+        setProductos([]); // Establecer array vacío como fallback
+        return;
+      }
+      
       setProductos(productosData);
     } catch (error) {
       console.error("Error al cargar productos:", error);
+      setProductos([]); // Establecer array vacío en caso de error
     }
   };
 
