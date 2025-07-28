@@ -10,9 +10,26 @@ const getAuthHeaders = () => {
   return token ? { Authorization: `Token ${token}` } : {};
 };
 
-export const GetAllServicios = () => {
+export const GetAllServicios = async () => {
   const headers = getAuthHeaders();
-  return axios.get(`${API_URL_SERVICIO}?show_all=true`, { headers });
+  console.log("🔍 Iniciando GetAllServicios...");
+  
+  try {
+    const response = await axios.get(`${API_URL_SERVICIO}?show_all=true`, { headers });
+    console.log("✅ Respuesta completa GetAllServicios:", response);
+    console.log("📄 response.data:", response.data);
+    
+    // Manejar respuesta paginada del backend
+    const data = response.data.results || response.data;
+    console.log("🔄 Datos extraídos:", data);
+    console.log("📊 Tipo de datos:", Array.isArray(data) ? 'Array' : typeof data);
+    console.log("📝 Cantidad de elementos:", Array.isArray(data) ? data.length : 'No es array');
+    
+    return data; // Retornar directamente el array
+  } catch (error) {
+    console.error("❌ Error en GetAllServicios:", error);
+    throw error;
+  }
 };
 
 export const CreateServicio = (servicio) => {

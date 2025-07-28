@@ -9,20 +9,71 @@ const getAuthHeaders = () => {
   return token ? { Authorization: `Token ${token}` } : {};
 };
 
-export const GetAllCajas = () => {
-  return axios.get(API_URL_CAJAS, { headers: getAuthHeaders() });
+export const GetAllCajas = async () => {
+  console.log("🔍 Iniciando GetAllCajas...");
+  
+  try {
+    const response = await axios.get(API_URL_CAJAS, { headers: getAuthHeaders() });
+    console.log("✅ Respuesta completa GetAllCajas:", response);
+    console.log("📄 response.data:", response.data);
+    
+    // Manejar respuesta paginada del backend
+    const data = response.data.results || response.data;
+    console.log("🔄 Datos extraídos:", data);
+    console.log("📊 Tipo de datos:", Array.isArray(data) ? 'Array' : typeof data);
+    console.log("📝 Cantidad de elementos:", Array.isArray(data) ? data.length : 'No es array');
+    
+    return data; // Retornar directamente el array
+  } catch (error) {
+    console.error("❌ Error en GetAllCajas:", error);
+    throw error;
+  }
 };
 
-export const GetUsuariosDisponibles = () => {
-  return axios.get(`${API_URL_CAJAS}usuarios_disponibles/`, {
-    headers: getAuthHeaders(),
-  });
+export const GetUsuariosDisponibles = async () => {
+  console.log("🔍 Iniciando GetUsuariosDisponibles...");
+  
+  try {
+    const response = await axios.get(`${API_URL_CAJAS}usuarios_disponibles/`, {
+      headers: getAuthHeaders(),
+    });
+    console.log("✅ Respuesta completa GetUsuariosDisponibles:", response);
+    console.log("📄 response.data:", response.data);
+    
+    // Manejar respuesta paginada del backend
+    const data = response.data.results || response.data;
+    console.log("🔄 Datos extraídos:", data);
+    console.log("📊 Tipo de datos:", Array.isArray(data) ? 'Array' : typeof data);
+    console.log("📝 Cantidad de elementos:", Array.isArray(data) ? data.length : 'No es array');
+    
+    return data; // Retornar directamente el array
+  } catch (error) {
+    console.error("❌ Error en GetUsuariosDisponibles:", error);
+    throw error;
+  }
 };
 
-export const GetTodosLosEmpleados = () => {
-  return axios.get(`${API_URL_CAJAS}empleados_todos/`, {
-    headers: getAuthHeaders(),
-  });
+export const GetTodosLosEmpleados = async () => {
+  console.log("🔍 Iniciando GetTodosLosEmpleados...");
+  
+  try {
+    const response = await axios.get(`${API_URL_CAJAS}empleados_todos/`, {
+      headers: getAuthHeaders(),
+    });
+    console.log("✅ Respuesta completa GetTodosLosEmpleados:", response);
+    console.log("📄 response.data:", response.data);
+    
+    // Manejar respuesta paginada del backend
+    const data = response.data.results || response.data;
+    console.log("🔄 Datos extraídos:", data);
+    console.log("📊 Tipo de datos:", Array.isArray(data) ? 'Array' : typeof data);
+    console.log("📝 Cantidad de elementos:", Array.isArray(data) ? data.length : 'No es array');
+    
+    return data; // Retornar directamente el array
+  } catch (error) {
+    console.error("❌ Error en GetTodosLosEmpleados:", error);
+    throw error;
+  }
 };
 
 export const CreateCaja = (caja) => {
