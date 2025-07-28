@@ -70,7 +70,7 @@ export const GetAllUsersFromAllEndpoints = async () => {
       ]);
 
     // Mapear datos de usuarios principales con validación
-    const usersData = Array.isArray(usersResponse.data) ? usersResponse.data.map((user) => ({
+    const usersData = Array.isArray(usersResponse.data.results) ? usersResponse.data.results.map((user) => ({
       ...user,
       nombre: user.first_name || '',
       apellido: user.last_name || '',
@@ -79,7 +79,7 @@ export const GetAllUsersFromAllEndpoints = async () => {
     })) : [];
 
     // Mapear datos de clientes con validación
-    const clientsData = Array.isArray(clientsResponse.data) ? clientsResponse.data.map((client) => ({
+    const clientsData = Array.isArray(clientsResponse.data.results) ? clientsResponse.data.results.map((client) => ({
       id: client.user?.id || client.ID_Usuario, // Fallback al ID de la relación
       cc: client.user?.cc || '',
       nombre: client.user?.first_name || '',
@@ -94,7 +94,7 @@ export const GetAllUsersFromAllEndpoints = async () => {
     })).filter(client => client.id) : []; // Filtrar clientes sin ID válido
 
     // Mapear datos de administradores con validación
-    const adminsData = Array.isArray(adminsResponse.data) ? adminsResponse.data.map((admin) => ({
+    const adminsData = Array.isArray(adminsResponse.data.results) ? adminsResponse.data.results.map((admin) => ({
       id: admin.user?.id || admin.ID_Usuario, // Fallback al ID de la relación
       cc: admin.user?.cc || '',
       nombre: admin.user?.first_name || '',
@@ -108,7 +108,7 @@ export const GetAllUsersFromAllEndpoints = async () => {
     })).filter(admin => admin.id) : []; // Filtrar admins sin ID válido
 
     // Mapear datos de empleados con validación
-    const employeesData = Array.isArray(employeesResponse.data) ? employeesResponse.data.map((employee) => ({
+    const employeesData = Array.isArray(employeesResponse.data.results) ? employeesResponse.data.results.map((employee) => ({
       id: employee.user?.id || employee.ID_Usuario, // Fallback al ID de la relación
       cc: employee.user?.cc || '',
       nombre: employee.user?.first_name || '',
@@ -122,12 +122,22 @@ export const GetAllUsersFromAllEndpoints = async () => {
       relationId: employee.ID_Usuario,
     })).filter(employee => employee.id) : []; // Filtrar empleados sin ID válido
 
-    return {
+    const resultado = {
       users: usersData,
       clients: clientsData,
       u_admin: adminsData,
       employee: employeesData,
     };
+
+    console.log("Datos finales mapeados:", resultado);
+    console.log("Conteo de usuarios:", {
+      users: usersData.length,
+      clients: clientsData.length,
+      u_admin: adminsData.length,
+      employee: employeesData.length
+    });
+
+    return resultado;
   } catch (error) {
     console.error("Error al obtener usuarios:", error);
     
