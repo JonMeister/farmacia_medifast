@@ -132,7 +132,7 @@ class UserSerializer(serializers.ModelSerializer):
         if rol == 'cliente':
             Cliente.objects.create(ID_Usuario=user, prioritario=False)
         elif rol == 'empleado':
-            Empleado.objects.create(ID_Usuario=user, Fecha_contratacion=now().date(), ID_Caja_id=1)
+            Empleado.objects.create(ID_Usuario=user, Fecha_contratacion=now().date())
         elif rol == 'administrador':
             Administrador.objects.create(ID_Usuario=user)
     

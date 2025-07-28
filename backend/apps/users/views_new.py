@@ -260,8 +260,7 @@ class UserViewSet(viewsets.ModelViewSet):
             Cliente.objects.create(ID_Usuario=user, prioritario=prioridad)
         elif nuevo_rol == "empleado":
             fecha = data.get("fecha_contratacion", "2024-01-01")  # Fecha por defecto
-            id_caja = data.get("caja", 1)  # Caja por defecto
-            Empleado.objects.create(ID_Usuario=user, Fecha_contratacion=fecha, ID_Caja_id=id_caja)
+            Empleado.objects.create(ID_Usuario=user, Fecha_contratacion=fecha)
         elif nuevo_rol == "administrador":
             Administrador.objects.create(ID_Usuario=user)
 
@@ -361,8 +360,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 Cliente.objects.create(ID_Usuario=user_obj, prioritario=prioridad)
             elif rol_str == "Empleado":
                 fecha = aditional_data.get("fecha_contratacion")
-                id_caja = aditional_data.get("caja")
-                Empleado.objects.create(ID_Usuario=user_obj, Fecha_contratacion=fecha, ID_Caja_id=id_caja)
+                Empleado.objects.create(ID_Usuario=user_obj, Fecha_contratacion=fecha)
             elif rol_str == "administrador":
                 Administrador.objects.create(ID_Usuario=user_obj)
 

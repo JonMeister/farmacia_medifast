@@ -339,8 +339,7 @@ class UserViewSet(viewsets.ModelViewSet):
             Cliente.objects.create(ID_Usuario=user, prioritario=prioridad)
         elif nuevo_rol == "empleado":
             fecha = data.get("fecha_contratacion", "2024-01-01")  # Fecha por defecto
-            id_caja = data.get("caja", 1)  # Caja por defecto
-            Empleado.objects.create(ID_Usuario=user, Fecha_contratacion=fecha, ID_Caja_id=id_caja)
+            Empleado.objects.create(ID_Usuario=user, Fecha_contratacion=fecha)
         elif nuevo_rol == "administrador":
             Administrador.objects.create(ID_Usuario=user)
 
@@ -394,22 +393,14 @@ class UserViewSet(viewsets.ModelViewSet):
     def _create_role_entry(self, user, rol):
         """Crear entrada en la tabla específica del rol"""
         from apps.users.models import Cliente, Empleado, Administrador
-        from apps.tickets.models import Caja
         from django.utils import timezone
         
         if rol == 'cliente':
             Cliente.objects.create(ID_Usuario=user, prioritario=False)
         elif rol == 'empleado':
-            # Buscar una caja por defecto
-            try:
-                caja_default = Caja.objects.first()
-                caja_id = caja_default.id if caja_default else 1
-            except:
-                caja_id = 1
             Empleado.objects.create(
                 ID_Usuario=user, 
-                Fecha_contratacion=timezone.now().date(), 
-                ID_Caja_id=caja_id
+                Fecha_contratacion=timezone.now().date()
             )
         elif rol == 'administrador':
             Administrador.objects.create(ID_Usuario=user)

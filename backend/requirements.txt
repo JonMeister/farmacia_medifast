@@ -1,42 +1,12 @@
-# ===================================================
-# Backend Dependencies - Farmacia Django React
-# ===================================================
-
-# Core Django Framework
-Django==5.1.7
 asgiref==3.8.1
+Django==5.1.7
+django-cors-headers==4.7.0
+djangorestframework==3.16.0
+gunicorn==23.0.0
+packaging==25.0
+pillow==11.1.0
+psycopg2-binary==2.9.10
+python-dotenv==1.1.1
 sqlparse==0.5.3
 tzdata==2025.2
-
-# Django REST Framework
-djangorestframework==3.16.0
-
-# CORS Headers for React Frontend Communication
-django-cors-headers==4.7.0
-
-# Image Processing (for product images, avatars, etc.)
-Pillow==11.1.0
-
-# Database Support
-# SQLite is included with Python/Django
-# PostgreSQL support (if needed in production)
-psycopg2-binary==2.9.10
-
-# Authentication & Security
-# djangorestframework-authtoken is included in djangorestframework
-
-# Additional Useful Dependencies
-# python-decouple  # For environment variables management
-# django-environ   # Alternative for environment variables
-# gunicorn         # WSGI server for production deployment
-# whitenoise       # Static files serving in production
-
-# Development & Testing Dependencies
-# pytest-django    # Testing framework
-# django-debug-toolbar  # Development debugging
-# coverage         # Code coverage reports
-
-# ===================================================
-# Installation Instructions:
-# pip install -r requirements.txt
-# ===================================================
+whitenoise==6.9.0
