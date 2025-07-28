@@ -54,7 +54,7 @@ DB_USER=jonmeister
 DB_PASSWORD=3kuuBq2Hi09OnP8vSr4oDzY0fhabvgNk
 DB_HOST=dpg-d23e16idbo4c7384log0-a.oregon-postgres.render.com
 DB_PORT=5432
-RENDER_EXTERNAL_HOSTNAME=tu-app-name.onrender.com
+RENDER_EXTERNAL_HOSTNAME=farmacia-medifast.onrender.com
 ```
 
 **Importante**: 
@@ -100,9 +100,9 @@ CORS_ALLOWED_ORIGINS = [
 
 ## 🔗 URLs Importantes
 
-- **API Base**: `https://tu-app-name.onrender.com/`
-- **Admin Panel**: `https://tu-app-name.onrender.com/admin/`
-- **API Docs**: `https://tu-app-name.onrender.com/api/`
+- **API Base**: `https://farmacia-medifast.onrender.com/`
+- **Admin Panel**: `https://farmacia-medifast.onrender.com/admin/`
+- **API Docs**: `https://farmacia-medifast.onrender.com/api/`
 
 ## 🛠️ Comandos Útiles
 

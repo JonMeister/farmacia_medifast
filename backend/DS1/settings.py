@@ -186,6 +186,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:5174',
     'https://localhost:5173',
     'https://localhost:5174',
+    'https://farmacia-medifast.onrender.com',  # Backend URL para testing
     # Agregar aquí la URL de tu frontend en producción cuando lo tengas
 ]
 
