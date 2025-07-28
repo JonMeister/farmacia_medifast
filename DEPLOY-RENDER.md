@@ -49,7 +49,7 @@ En la sección "Environment Variables" del Web Service, agrega:
 ```
 SECRET_KEY=azdk+78ol5)b1ty4ypgu35ura2zy*1=-%2o%kv^26v7qnu2z^p
 DEBUG=False
-DB_NAME=medifastds1
+DB_NAME=medifastdb
 DB_USER=jonmeister
 DB_PASSWORD=3kuuBq2Hi09OnP8vSr4oDzY0fhabvgNk
 DB_HOST=dpg-d23e16idbo4c7384log0-a.oregon-postgres.render.com
