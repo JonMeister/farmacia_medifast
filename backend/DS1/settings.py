@@ -187,7 +187,13 @@ CORS_ALLOWED_ORIGINS = [
     'https://localhost:5173',
     'https://localhost:5174',
     'https://farmacia-medifast.onrender.com',  # Backend URL para testing
-    # Agregar aquí la URL de tu frontend en producción cuando lo tengas
+    # URLs de Vercel - agregar la URL específica de tu proyecto
+    'https://*.vercel.app',  # Patron para todos los subdominios de Vercel
+]
+
+# Para manejar patrones con wildcards en Vercel
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.vercel\.app$",  # Cualquier subdominio de vercel.app
 ]
 
 # Para desarrollo, permitir orígenes adicionales si es necesario
@@ -210,7 +216,20 @@ CORS_ALLOWED_HEADERS = [
     'x-requested-with',
 ]
 
+# Métodos HTTP permitidos
+CORS_ALLOWED_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
 CORS_ALLOW_CREDENTIALS = True
+
+# Configuración adicional para preflight requests
+CORS_PREFLIGHT_MAX_AGE = 86400  # 24 horas
 
 # Configuraciones de seguridad para producción
 if not DEBUG:
