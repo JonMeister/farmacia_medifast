@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import medifastLogo from "../assets/medifast_logo.png";
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -133,7 +134,7 @@ export default function Register() {
       <main className="flex flex-1 items-center justify-center py-8">
         <div className="bg-white shadow-lg rounded-xl p-8 w-full max-w-md">
           <img
-            src="src/assets/medifast_logo.png"
+            src={medifastLogo}
             alt="Logo"
             className="w-40 mx-auto mb-6"
           />
@@ -205,7 +206,7 @@ export default function Register() {
               className="w-full px-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-green-500"
               required
               pattern="[36][0-9]{9}"
-              title="El teléfono debe empezar con 3 o 6 y tener 10 dígitos"
+              title="El teléfono debe empezar with 3 o 6 y tener 10 dígitos"
             />
 
             <input

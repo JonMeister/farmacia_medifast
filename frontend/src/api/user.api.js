@@ -37,58 +37,58 @@ export const GetAllUsersFromAllEndpoints = async () => {
         axios.get(API_URLS.employee, { headers }),
       ]);
 
-    // Mapear datos de usuarios principales
-    const usersData = usersResponse.data.map((user) => ({
+    // Mapear datos de usuarios principales con validación
+    const usersData = Array.isArray(usersResponse.data) ? usersResponse.data.map((user) => ({
       ...user,
-      nombre: user.first_name,
-      apellido: user.last_name,
-      telefono: user.phone_number,
+      nombre: user.first_name || '',
+      apellido: user.last_name || '',
+      telefono: user.phone_number || '',
       rol: user.rol || "cliente",
-    }));
+    })) : [];
 
-    // Mapear datos de clientes
-    const clientsData = clientsResponse.data.map((client) => ({
-      id: client.user?.id, // ID del usuario base
-      cc: client.user?.cc,
-      nombre: client.user?.first_name,
-      apellido: client.user?.last_name,
-      email: client.user?.email,
-      telefono: client.user?.phone_number,
+    // Mapear datos de clientes con validación
+    const clientsData = Array.isArray(clientsResponse.data) ? clientsResponse.data.map((client) => ({
+      id: client.user?.id || client.ID_Usuario, // Fallback al ID de la relación
+      cc: client.user?.cc || '',
+      nombre: client.user?.first_name || '',
+      apellido: client.user?.last_name || '',
+      email: client.user?.email || '',
+      telefono: client.user?.phone_number || '',
       rol: "cliente",
-      is_active: client.user?.is_active,
-      prioritario: client.prioritario,
+      is_active: client.user?.is_active ?? true,
+      prioritario: client.prioritario || false,
       // Mantener también el ID de la relación para referencia
       relationId: client.ID_Usuario,
-    }));
+    })).filter(client => client.id) : []; // Filtrar clientes sin ID válido
 
-    // Mapear datos de administradores
-    const adminsData = adminsResponse.data.map((admin) => ({
-      id: admin.user?.id, // ID del usuario base
-      cc: admin.user?.cc,
-      nombre: admin.user?.first_name,
-      apellido: admin.user?.last_name,
-      email: admin.user?.email,
-      telefono: admin.user?.phone_number,
+    // Mapear datos de administradores con validación
+    const adminsData = Array.isArray(adminsResponse.data) ? adminsResponse.data.map((admin) => ({
+      id: admin.user?.id || admin.ID_Usuario, // Fallback al ID de la relación
+      cc: admin.user?.cc || '',
+      nombre: admin.user?.first_name || '',
+      apellido: admin.user?.last_name || '',
+      email: admin.user?.email || '',
+      telefono: admin.user?.phone_number || '',
       rol: "administrador",
-      is_active: admin.user?.is_active,
+      is_active: admin.user?.is_active ?? true,
       // Mantener también el ID de la relación para referencia
       relationId: admin.ID_Usuario,
-    }));
+    })).filter(admin => admin.id) : []; // Filtrar admins sin ID válido
 
-    // Mapear datos de empleados
-    const employeesData = employeesResponse.data.map((employee) => ({
-      id: employee.user?.id, // ID del usuario base
-      cc: employee.user?.cc,
-      nombre: employee.user?.first_name,
-      apellido: employee.user?.last_name,
-      email: employee.user?.email,
-      telefono: employee.user?.phone_number,
+    // Mapear datos de empleados con validación
+    const employeesData = Array.isArray(employeesResponse.data) ? employeesResponse.data.map((employee) => ({
+      id: employee.user?.id || employee.ID_Usuario, // Fallback al ID de la relación
+      cc: employee.user?.cc || '',
+      nombre: employee.user?.first_name || '',
+      apellido: employee.user?.last_name || '',
+      email: employee.user?.email || '',
+      telefono: employee.user?.phone_number || '',
       rol: "empleado",
-      is_active: employee.user?.is_active,
-      fecha_contratacion: employee.Fecha_contratacion,
+      is_active: employee.user?.is_active ?? true,
+      fecha_contratacion: employee.Fecha_contratacion || '',
       // Mantener también el ID de la relación para referencia
       relationId: employee.ID_Usuario,
-    }));
+    })).filter(employee => employee.id) : []; // Filtrar empleados sin ID válido
 
     return {
       users: usersData,
@@ -98,7 +98,23 @@ export const GetAllUsersFromAllEndpoints = async () => {
     };
   } catch (error) {
     console.error("Error al obtener usuarios:", error);
-    throw error;
+    
+    // Proporcionar información más específica del error
+    if (error.response) {
+      if (error.response.status === 401) {
+        throw new Error("Token de autenticación inválido. Por favor, inicia sesión nuevamente.");
+      } else if (error.response.status === 403) {
+        throw new Error("No tienes permisos para acceder a esta información.");
+      } else if (error.response.status === 404) {
+        throw new Error("Endpoint no encontrado. Verifica la configuración del servidor.");
+      } else {
+        throw new Error(`Error del servidor: ${error.response.status} - ${error.response.data?.detail || error.message}`);
+      }
+    } else if (error.request) {
+      throw new Error("No se pudo conectar con el servidor. Verifica tu conexión a internet.");
+    } else {
+      throw new Error("Error inesperado: " + error.message);
+    }
   }
 };
 

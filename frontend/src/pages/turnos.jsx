@@ -1,6 +1,7 @@
 import Button from "../components/Button";
 import { useNavigate } from "react-router-dom";
 import React, { useEffect, useState } from "react";
+import medifastLogo from "../assets/medifast_logo.png";
 import {
   getTurnoActivoCliente,
   getColaTurnos,
@@ -200,7 +201,7 @@ export default function Turno() {
     if ("Notification" in window && Notification.permission === "granted") {
       new Notification(titulo, {
         body: mensaje,
-        icon: "/src/assets/medifast_logo.png",
+        icon: medifastLogo,
         requireInteraction: true,
       });
     }

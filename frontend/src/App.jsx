@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import fondoClaro from "./assets/FondoClaro.jpg";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import SelectorService from "./pages/Services";
@@ -20,7 +21,7 @@ function App() {
   return (
     <div
       className="min-h-screen bg-gray-300 flex flex-col bg-cover bg-center bg-no-repeat"
-      style={{ backgroundImage: "url(src/assets/FondoClaro.jpg)" }}
+      style={{ backgroundImage: `url(${fondoClaro})` }}
     >
       <BrowserRouter>
         <Header />
@@ -48,5 +49,5 @@ function App() {
     </div>
   );
 }
-//ORIGINAL
+
 export default App;
