@@ -39,7 +39,7 @@ git push origin production
    - **Branch**: `production`
    - **Root Directory**: `backend`
    - **Runtime**: Python 3
-   - **Build Command**: `./build.sh`
+   - **Build Command**: `chmod +x build.sh && ./build.sh`
    - **Start Command**: `gunicorn DS1.wsgi:application`
 
 ### 5. Variables de Entorno
@@ -47,12 +47,12 @@ git push origin production
 En la sección "Environment Variables" del Web Service, agrega:
 
 ```
-SECRET_KEY=tu-secret-key-super-segura-aqui
+SECRET_KEY=azdk+78ol5)b1ty4ypgu35ura2zy*1=-%2o%kv^26v7qnu2z^p
 DEBUG=False
-DB_NAME=farmacia
-DB_USER=farmacia_user
-DB_PASSWORD=password-de-la-db-postgresql
-DB_HOST=hostname-de-postgresql-render
+DB_NAME=medifastds1
+DB_USER=jonmeister
+DB_PASSWORD=3kuuBq2Hi09OnP8vSr4oDzY0fhabvgNk
+DB_HOST=dpg-d23e16idbo4c7384log0-a.oregon-postgres.render.com
 DB_PORT=5432
 RENDER_EXTERNAL_HOSTNAME=tu-app-name.onrender.com
 ```
