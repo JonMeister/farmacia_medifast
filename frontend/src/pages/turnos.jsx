@@ -54,6 +54,13 @@ export default function Turno() {
   const [mostrarEstadoCajas, setMostrarEstadoCajas] = useState(false);
   const [notificacionesActivas, setNotificacionesActivas] = useState(false);
   const [turnoAnterior, setTurnoAnterior] = useState(null);
+  
+  // Estados para carga en segundo plano (sin afectar UI)
+  const [actualizandoTurno, setActualizandoTurno] = useState(false);
+  const [actualizandoCola, setActualizandoCola] = useState(false);
+  const [ultimaActualizacion, setUltimaActualizacion] = useState(null);
+  const [pestanaActiva, setPestanaActiva] = useState(true);
+  const [datosActualizados, setDatosActualizados] = useState(false);
 
   // Cambiar imagen cada 15 segundos
   useEffect(() => {
@@ -72,44 +79,136 @@ export default function Turno() {
     return () => clearInterval(messageInterval);
   }, []);
 
-  // Definir cargarDatosTurnos ANTES de usarlo
+  // Funciones de carga específicas para actualización en segundo plano
+  const actualizarTurnoCliente = React.useCallback(async (cedula) => {
+    try {
+      setActualizandoTurno(true);
+      const turnoClienteResponse = await getTurnoActivoCliente(cedula);
+      
+      if (turnoClienteResponse.tiene_turno) {      setTurnoCliente(prev => {
+        // Solo actualizar si hay cambios significativos
+        if (!prev || prev.id !== turnoClienteResponse.turno.id || 
+            prev.estado !== turnoClienteResponse.turno.estado) {
+          // Disparar animación de actualización
+          setDatosActualizados(true);
+          setTimeout(() => setDatosActualizados(false), 2000);
+          return turnoClienteResponse.turno;
+        }
+        return prev;
+      });
+      } else {
+        // Si no tiene turno, redirigir a pedir turno
+        navigate("/pedir-turno");
+        return;
+      }
+    } catch (error) {
+      console.error("Error al actualizar turno del cliente:", error);
+    } finally {
+      setActualizandoTurno(false);
+    }
+  }, [navigate]);
+
+  const actualizarTurnoActualGlobal = React.useCallback(async () => {
+    try {
+      const turnoActualGlobalResponse = await getTurnoActualGlobal();
+      
+      setTurnoActualCaja(prev => {
+        const nuevoTurno = turnoActualGlobalResponse.hay_turno_actual 
+          ? turnoActualGlobalResponse.turno_actual 
+          : null;
+        
+        // Solo actualizar si hay cambios
+        if (!prev && !nuevoTurno) return prev;
+        if (!prev || !nuevoTurno) return nuevoTurno;
+        if (prev.id !== nuevoTurno.id || prev.numero_turno !== nuevoTurno.numero_turno) {
+          return nuevoTurno;
+        }
+        return prev;
+      });
+    } catch (error) {
+      console.error("Error al actualizar turno actual global:", error);
+    }
+  }, []);
+
+  const actualizarColaTurnos = React.useCallback(async () => {
+    try {
+      setActualizandoCola(true);
+      const colaResponse = await getColaTurnos();
+      
+      setColaTurnos(prev => {
+        // Comparar si hay cambios reales en la cola
+        if (JSON.stringify(prev) !== JSON.stringify(colaResponse)) {
+          return colaResponse;
+        }
+        return prev;
+      });
+    } catch (error) {
+      console.error("Error al actualizar cola de turnos:", error);
+    } finally {
+      setActualizandoCola(false);
+    }
+  }, []);
+
+  const actualizarEstadoCajas = React.useCallback(async () => {
+    try {
+      const estadoCajasResponse = await getEstadoCajas();
+      setEstadoCajas(prev => {
+        const nuevoCajas = estadoCajasResponse.estado_cajas || [];
+        // Solo actualizar si hay cambios
+        if (JSON.stringify(prev) !== JSON.stringify(nuevoCajas)) {
+          return nuevoCajas;
+        }
+        return prev;
+      });
+    } catch (error) {
+      console.error("Error al actualizar estado de cajas:", error);
+    }
+  }, []);
+
+  // Función para carga inicial completa
   const cargarDatosTurnos = React.useCallback(
     async (cedula) => {
       try {
         setLoading(true);
 
-        // Obtener turno del cliente
-        const turnoClienteResponse = await getTurnoActivoCliente(cedula);
+        // Cargar todos los datos en paralelo
+        await Promise.all([
+          actualizarTurnoCliente(cedula),
+          actualizarTurnoActualGlobal(),
+          actualizarColaTurnos(),
+          actualizarEstadoCajas()
+        ]);
 
-        if (turnoClienteResponse.tiene_turno) {
-          setTurnoCliente(turnoClienteResponse.turno);
-        } else {
-          // Si no tiene turno, redirigir a pedir turno
-          navigate("/pedir-turno");
-          return;
-        }
-
-        // Obtener turno actual global (independiente de la caja del usuario)
-        const turnoActualGlobalResponse = await getTurnoActualGlobal();
-        if (turnoActualGlobalResponse.hay_turno_actual) {
-          setTurnoActualCaja(turnoActualGlobalResponse.turno_actual);
-        }
-
-        // Obtener cola de turnos
-        const colaResponse = await getColaTurnos();
-        setColaTurnos(colaResponse);
-
-        // Obtener estado de todas las cajas
-        const estadoCajasResponse = await getEstadoCajas();
-        setEstadoCajas(estadoCajasResponse.estado_cajas || []);
+        setUltimaActualizacion(new Date());
       } catch (error) {
         console.error("Error al cargar datos de turnos:", error);
       } finally {
         setLoading(false);
       }
     },
-    [navigate]
+    [actualizarTurnoCliente, actualizarTurnoActualGlobal, actualizarColaTurnos, actualizarEstadoCajas]
   );
+
+  // Función para actualización en segundo plano (más rápida y silenciosa)
+  const actualizarDatosSegundoPlano = React.useCallback(async (cedula) => {
+    try {
+      // Solo actualizar datos críticos más frecuentemente
+      await Promise.all([
+        actualizarTurnoCliente(cedula),
+        actualizarTurnoActualGlobal(),
+        actualizarColaTurnos()
+      ]);
+
+      // Actualizar estado de cajas menos frecuentemente
+      if (!ultimaActualizacion || (new Date() - ultimaActualizacion) > 60000) {
+        await actualizarEstadoCajas();
+      }
+
+      setUltimaActualizacion(new Date());
+    } catch (error) {
+      console.error("Error en actualización de segundo plano:", error);
+    }
+  }, [actualizarTurnoCliente, actualizarTurnoActualGlobal, actualizarColaTurnos, actualizarEstadoCajas, ultimaActualizacion]);
 
   // Verificar autenticación y cargar datos
   useEffect(() => {
@@ -135,15 +234,29 @@ export default function Turno() {
       apellido: localStorage.getItem("user_lastname") || "",
     });
 
+    // Carga inicial
     cargarDatosTurnos(cedula);
 
-    // Actualizar datos cada 30 segundos
-    const interval = setInterval(() => {
-      cargarDatosTurnos(cedula);
-    }, 30000);
+    // Actualización inteligente basada en visibilidad de pestaña
+    const intervaloCritico = setInterval(() => {
+      // Solo actualizar si la pestaña está activa
+      if (pestanaActiva) {
+        actualizarDatosSegundoPlano(cedula);
+      }
+    }, pestanaActiva ? 10000 : 30000); // 10s si está activa, 30s si no
 
-    return () => clearInterval(interval);
-  }, [navigate, cargarDatosTurnos]);
+    // Actualización completa menos frecuente
+    const intervaloCompleto = setInterval(() => {
+      if (pestanaActiva) {
+        cargarDatosTurnos(cedula);
+      }
+    }, pestanaActiva ? 120000 : 300000); // 2min si está activa, 5min si no
+
+    return () => {
+      clearInterval(intervaloCritico);
+      clearInterval(intervaloCompleto);
+    };
+  }, [navigate, cargarDatosTurnos, actualizarDatosSegundoPlano, pestanaActiva]);
 
   // Solicitar permisos de notificación
   useEffect(() => {
@@ -155,6 +268,36 @@ export default function Turno() {
       setNotificacionesActivas(true);
     }
   }, []);
+
+  // Detectar cuando la pestaña está activa/inactiva para optimizar actualizaciones
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setPestanaActiva(!document.hidden);
+    };
+
+    const handleFocus = () => {
+      setPestanaActiva(true);
+      // Actualizar inmediatamente cuando la pestaña vuelve a estar activa
+      if (clienteInfo?.cedula) {
+        actualizarDatosSegundoPlano(clienteInfo.cedula);
+      }
+    };
+
+    const handleBlur = () => {
+      setPestanaActiva(false);
+    };
+
+    // Agregar event listeners
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, [clienteInfo?.cedula, actualizarDatosSegundoPlano]);
 
   // Monitorear cambios en el turno para notificaciones
   useEffect(() => {
@@ -230,6 +373,29 @@ export default function Turno() {
     }
   };
 
+  // Función para actualización manual instantánea
+  const handleActualizacionManual = async () => {
+    if (!clienteInfo?.cedula) return;
+    
+    try {
+      // Usar la función de segundo plano que es más rápida
+      await actualizarDatosSegundoPlano(clienteInfo.cedula);
+      
+      // Mostrar feedback visual temporal
+      const button = document.querySelector('[data-update-button]');
+      if (button) {
+        button.style.backgroundColor = '#10b981';
+        button.style.color = 'white';
+        setTimeout(() => {
+          button.style.backgroundColor = '';
+          button.style.color = '';
+        }, 1000);
+      }
+    } catch (error) {
+      console.error("Error en actualización manual:", error);
+    }
+  };
+
   const obtenerPosicionEnCola = () => {
     if (!turnoCliente) return 0;
 
@@ -275,11 +441,38 @@ export default function Turno() {
       <div className="w-full max-w-7xl mx-auto h-auto bg-white shadow-lg rounded-lg p-6">
         {/* Información del Cliente */}
         {clienteInfo && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-            <h3 className="font-semibold text-blue-800">
-              👤 Bienvenido, {clienteInfo.nombre} {clienteInfo.apellido}
-            </h3>
-            <p className="text-sm text-blue-600">CC: {clienteInfo.cedula}</p>
+          <div className={`bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 relative transition-all duration-300 ${datosActualizados ? 'ring-2 ring-green-300 bg-green-50' : ''}`}>
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="font-semibold text-blue-800">
+                  👤 Bienvenido, {clienteInfo.nombre} {clienteInfo.apellido}
+                </h3>
+                <p className="text-sm text-blue-600">CC: {clienteInfo.cedula}</p>
+              </div>
+              {/* Indicador sutil de actualización */}
+              <div className="flex items-center space-x-2">
+                {datosActualizados && (
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
+                    <span className="text-xs text-green-600 font-medium">¡Actualizado!</span>
+                  </div>
+                )}
+                {(actualizandoTurno || actualizandoCola) && (
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    <span className="text-xs text-blue-600">Actualizando...</span>
+                  </div>
+                )}
+                {ultimaActualizacion && !datosActualizados && !(actualizandoTurno || actualizandoCola) && (
+                  <span className="text-xs text-blue-500">
+                    Última actualización: {ultimaActualizacion.toLocaleTimeString()}
+                  </span>
+                )}
+                {!pestanaActiva && (
+                  <span className="text-xs text-yellow-600">⏸️ Pausado</span>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -322,10 +515,19 @@ export default function Turno() {
           </div>
           <div className="flex flex-col md:flex-row gap-4 md:w-auto w-full">
             <button
-              className="flex-1 border border-green-600 text-green-600 rounded-full py-4 px-6 font-bold hover:bg-green-200 transition duration-300"
-              onClick={() => cargarDatosTurnos(clienteInfo?.cedula)}
+              data-update-button
+              className="flex-1 border border-green-600 text-green-600 rounded-full py-4 px-6 font-bold hover:bg-green-200 transition duration-300 flex items-center justify-center space-x-2"
+              onClick={handleActualizacionManual}
+              disabled={actualizandoTurno || actualizandoCola}
             >
-              Actualizar información
+              {(actualizandoTurno || actualizandoCola) ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Actualizando...</span>
+                </>
+              ) : (
+                <span>Actualizar información</span>
+              )}
             </button>
             <button
               className="flex-1 border border-orange-600 bg-orange-600 text-white rounded-full py-4 px-6 font-bold hover:bg-orange-800 transition duration-300"
@@ -339,14 +541,19 @@ export default function Turno() {
 
         {/* Información del Turno */}
         <div className="flex flex-wrap gap-4 mb-6">
-          <div className="flex-1 bg-gray-100 rounded-xl p-4 min-h-[100px]">
-            <h4 className="font-semibold text-gray-800 mb-2">
-              Estado del Turno
-            </h4>
+          <div className="flex-1 bg-gray-100 rounded-xl p-4 min-h-[100px] transition-all duration-300 ease-in-out">
+            <div className="flex justify-between items-center mb-2">
+              <h4 className="font-semibold text-gray-800">
+                Estado del Turno
+              </h4>
+              {actualizandoTurno && (
+                <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+              )}
+            </div>
             {turnoCliente ? (
-              <div>
+              <div className="transition-all duration-300 ease-in-out">
                 <span
-                  className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                  className={`inline-block px-3 py-1 rounded-full text-sm font-medium transition-all duration-300 ${
                     turnoCliente.estado === "esperando"
                       ? "bg-yellow-100 text-yellow-800"
                       : turnoCliente.estado === "en_atencion"
@@ -364,14 +571,14 @@ export default function Turno() {
                     ? "Finalizado"
                     : "Cancelado"}
                 </span>
-                <p className="text-sm text-gray-600 mt-2">
+                <p className="text-sm text-gray-600 mt-2 transition-all duration-300">
                   Servicio: {turnoCliente.ID_Servicio_data?.Nombre || "---"}
                 </p>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 transition-all duration-300">
                   Personas delante: {obtenerPosicionEnCola()}
                 </p>
                 {turnoCliente.es_prioritario && (
-                  <span className="inline-block px-2 py-1 bg-red-100 text-red-600 text-xs rounded-full mt-1">
+                  <span className="inline-block px-2 py-1 bg-red-100 text-red-600 text-xs rounded-full mt-1 transition-all duration-300">
                     Prioritario
                   </span>
                 )}
