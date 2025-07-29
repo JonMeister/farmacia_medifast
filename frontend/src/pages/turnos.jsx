@@ -2,6 +2,10 @@ import Button from "../components/Button";
 import { useNavigate } from "react-router-dom";
 import React, { useEffect, useState } from "react";
 import medifastLogo from "../assets/medifast_logo.png";
+// Importar las imágenes del carrusel
+import imgPR_ViernesPastillaton from "../assets/ads/PR_ViernesPastillaton.jpg";
+import imgVT_Vitamax from "../assets/ads/VT_Vitamax.jpg";
+import imgMD_Somniora from "../assets/ads/MD_Somniora.jpg";
 import {
   getTurnoActivoCliente,
   getColaTurnos,
@@ -11,9 +15,9 @@ import {
 } from "../api/turno.api";
 
 const images = [
-  "src/assets/ads/PR_ViernesPastillaton.jpg",
-  "src/assets/ads/VT_Vitamax.jpg",
-  "src/assets/ads/MD_Somniora.jpg",
+  imgPR_ViernesPastillaton,
+  imgVT_Vitamax,
+  imgMD_Somniora,
 ];
 
 const messages = [
@@ -45,11 +49,16 @@ export default function Turno() {
   const [turnoActualCaja, setTurnoActualCaja] = useState(null);
   const [colaTurnos, setColaTurnos] = useState([]);
   const [estadoCajas, setEstadoCajas] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Cambiar a false para carga silenciosa
   const [clienteInfo, setClienteInfo] = useState(null);
   const [mostrarEstadoCajas, setMostrarEstadoCajas] = useState(false);
   const [notificacionesActivas, setNotificacionesActivas] = useState(false);
   const [turnoAnterior, setTurnoAnterior] = useState(null);
+  
+  // Estados para mejor UX (sin afectar funcionalidad core)
+  const [actualizandoManual, setActualizandoManual] = useState(false);
+  const [ultimaActualizacion, setUltimaActualizacion] = useState(new Date());
+  const [cargaInicialCompleta, setCargaInicialCompleta] = useState(false);
 
   // Cambiar imagen cada 15 segundos
   useEffect(() => {
@@ -68,7 +77,51 @@ export default function Turno() {
     return () => clearInterval(messageInterval);
   }, []);
 
-  // Definir cargarDatosTurnos ANTES de usarlo
+  // Función para carga inicial silenciosa (sin mostrar spinner)
+  const cargarDatosSilencioso = React.useCallback(
+    async (cedula) => {
+      try {
+        // No activar loading para carga silenciosa
+        
+        // Obtener turno del cliente
+        const turnoClienteResponse = await getTurnoActivoCliente(cedula);
+
+        if (turnoClienteResponse.tiene_turno) {
+          setTurnoCliente(turnoClienteResponse.turno);
+        } else {
+          // Si no tiene turno, redirigir a pedir turno
+          navigate("/pedir-turno");
+          return;
+        }
+
+        // Obtener turno actual global (independiente de la caja del usuario)
+        const turnoActualGlobalResponse = await getTurnoActualGlobal();
+        if (turnoActualGlobalResponse.hay_turno_actual) {
+          setTurnoActualCaja(turnoActualGlobalResponse.turno_actual);
+        }
+
+        // Obtener cola de turnos
+        const colaResponse = await getColaTurnos();
+        setColaTurnos(colaResponse);
+
+        // Obtener estado de todas las cajas
+        const estadoCajasResponse = await getEstadoCajas();
+        setEstadoCajas(estadoCajasResponse.estado_cajas || []);
+        
+        // Actualizar timestamp silenciosamente
+        setUltimaActualizacion(new Date());
+        setCargaInicialCompleta(true);
+      } catch (error) {
+        console.error("Error al cargar datos de turnos silenciosamente:", error);
+        // En caso de error, mostrar pantalla de carga tradicional
+        setLoading(true);
+        cargarDatosTurnos(cedula);
+      }
+    },
+    [navigate]
+  );
+
+  // Definir cargarDatosTurnos (para actualizaciones manuales que sí muestran loading)
   const cargarDatosTurnos = React.useCallback(
     async (cedula) => {
       try {
@@ -98,6 +151,9 @@ export default function Turno() {
         // Obtener estado de todas las cajas
         const estadoCajasResponse = await getEstadoCajas();
         setEstadoCajas(estadoCajasResponse.estado_cajas || []);
+        
+        // Actualizar timestamp silenciosamente
+        setUltimaActualizacion(new Date());
       } catch (error) {
         console.error("Error al cargar datos de turnos:", error);
       } finally {
@@ -105,6 +161,43 @@ export default function Turno() {
       }
     },
     [navigate]
+  );
+
+  // Función para actualización manual más rápida (sin mostrar loading completo)
+  const actualizarManual = React.useCallback(
+    async (cedula) => {
+      if (actualizandoManual) return; // Evitar múltiples llamadas
+      
+      try {
+        setActualizandoManual(true);
+        
+        // Solo actualizar datos críticos más rápido
+        const [turnoClienteResponse, turnoActualGlobalResponse, colaResponse] = await Promise.all([
+          getTurnoActivoCliente(cedula),
+          getTurnoActualGlobal(),
+          getColaTurnos()
+        ]);
+
+        if (turnoClienteResponse.tiene_turno) {
+          setTurnoCliente(turnoClienteResponse.turno);
+        } else {
+          navigate("/pedir-turno");
+          return;
+        }
+
+        if (turnoActualGlobalResponse.hay_turno_actual) {
+          setTurnoActualCaja(turnoActualGlobalResponse.turno_actual);
+        }
+
+        setColaTurnos(colaResponse);
+        setUltimaActualizacion(new Date());
+      } catch (error) {
+        console.error("Error en actualización manual:", error);
+      } finally {
+        setActualizandoManual(false);
+      }
+    },
+    [navigate, actualizandoManual]
   );
 
   // Verificar autenticación y cargar datos
@@ -131,15 +224,16 @@ export default function Turno() {
       apellido: localStorage.getItem("user_lastname") || "",
     });
 
-    cargarDatosTurnos(cedula);
+    // Carga inicial silenciosa (sin mostrar spinner)
+    cargarDatosSilencioso(cedula);
 
-    // Actualizar datos cada 30 segundos
+    // Actualizar datos cada 30 segundos usando la carga silenciosa también
     const interval = setInterval(() => {
-      cargarDatosTurnos(cedula);
+      cargarDatosSilencioso(cedula);
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [navigate, cargarDatosTurnos]);
+  }, [navigate, cargarDatosSilencioso]);
 
   // Solicitar permisos de notificación
   useEffect(() => {
@@ -245,13 +339,14 @@ export default function Turno() {
     return "---";
   };
 
+  // Solo mostrar pantalla de carga en casos excepcionales (errores)
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-600 mx-auto"></div>
           <p className="mt-4 text-lg text-gray-600">
-            Cargando información del turno...
+            Reconectando...
           </p>
         </div>
       </div>
@@ -272,10 +367,25 @@ export default function Turno() {
         {/* Información del Cliente */}
         {clienteInfo && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-            <h3 className="font-semibold text-blue-800">
-              👤 Bienvenido, {clienteInfo.nombre} {clienteInfo.apellido}
-            </h3>
-            <p className="text-sm text-blue-600">CC: {clienteInfo.cedula}</p>
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="font-semibold text-blue-800">
+                  👤 Bienvenido, {clienteInfo.nombre} {clienteInfo.apellido}
+                </h3>
+                <p className="text-sm text-blue-600">CC: {clienteInfo.cedula}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-blue-500">
+                  Última actualización: {ultimaActualizacion.toLocaleTimeString()}
+                </p>
+                {actualizandoManual && (
+                  <div className="flex items-center space-x-1 mt-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-xs text-green-600">Actualizando...</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -286,9 +396,11 @@ export default function Turno() {
               ? `Turno Actual - Caja ${
                   turnoActualCaja.caja_nombre || turnoActualCaja.caja_id
                 }`
-              : "Sin Turno en Atención"}
+              : cargaInicialCompleta 
+                ? "Sin Turno en Atención"
+                : "Cargando..."}
           </h2>
-          <span className="text-8xl font-black text-white">
+          <span className={`text-8xl font-black text-white ${!cargaInicialCompleta && !turnoActualCaja ? 'animate-pulse' : ''}`}>
             {obtenerTurnoActual()}
           </span>
           {turnoActualCaja && (
@@ -306,22 +418,35 @@ export default function Turno() {
               )}
             </div>
           )}
+          {!cargaInicialCompleta && !turnoActualCaja && (
+            <div className="text-center text-white mt-2 opacity-50">
+              <p className="text-lg animate-pulse">Obteniendo información...</p>
+            </div>
+          )}
         </div>
 
         {/* Mi Turno y Controles */}
         <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
           <div className="flex-1 rounded-full py-4 px-6 flex justify-between items-center">
             <span className="text-4xl font-bold text-green-600">Mi Turno</span>
-            <span className="text-6xl font-bold text-green-600">
-              {turnoCliente?.numero_turno || "---"}
+            <span className={`text-6xl font-bold text-green-600 ${!cargaInicialCompleta && !turnoCliente ? 'animate-pulse opacity-50' : ''}`}>
+              {turnoCliente?.numero_turno || (!cargaInicialCompleta ? "..." : "---")}
             </span>
           </div>
           <div className="flex flex-col md:flex-row gap-4 md:w-auto w-full">
             <button
-              className="flex-1 border border-green-600 text-green-600 rounded-full py-4 px-6 font-bold hover:bg-green-200 transition duration-300"
-              onClick={() => cargarDatosTurnos(clienteInfo?.cedula)}
+              className="flex-1 border border-green-600 text-green-600 rounded-full py-4 px-6 font-bold hover:bg-green-200 transition duration-300 flex items-center justify-center space-x-2"
+              onClick={() => actualizarManual(clienteInfo?.cedula)}
+              disabled={actualizandoManual}
             >
-              Actualizar información
+              {actualizandoManual ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Actualizando...</span>
+                </>
+              ) : (
+                <span>Actualizar información</span>
+              )}
             </button>
             <button
               className="flex-1 border border-orange-600 bg-orange-600 text-white rounded-full py-4 px-6 font-bold hover:bg-orange-800 transition duration-300"

@@ -508,40 +508,6 @@ class TurnoViewSet(viewsets.ModelViewSet):
         serializer = TurnoSerializer(turnos, many=True)
         return Response(serializer.data)
     
-    @action(detail=False, methods=['get'])
-    def estado_cajas(self, request):
-        """Obtener estado de todas las cajas con turnos pendientes"""
-        cajas = Caja.objects.filter(deleted_at__isnull=True).order_by('id')
-        resultado = []
-        
-        for caja in cajas:
-            turnos_pendientes = Turno.objects.filter(
-                ID_Caja=caja,
-                estado__in=['esperando', 'en_atencion']
-            ).count()
-            
-            turno_actual = Turno.objects.filter(
-                ID_Caja=caja,
-                estado='en_atencion'
-            ).first()
-            
-            resultado.append({
-                'id': caja.id,
-                'estado': caja.Estado,
-                'cajero': {
-                    'nombre': f"{caja.ID_Usuario.first_name} {caja.ID_Usuario.last_name}" if caja.ID_Usuario else None,
-                    'cc': caja.ID_Usuario.cc if caja.ID_Usuario else None
-                } if caja.ID_Usuario else None,
-                'turnos_pendientes': turnos_pendientes,
-                'turno_actual': {
-                    'numero': turno_actual.numero_turno,
-                    'cliente': turno_actual.Cedula_manual,
-                    'servicio': turno_actual.ID_Servicio.Nombre
-                } if turno_actual else None
-            })
-        
-        return Response(resultado)
-    
     @action(detail=True, methods=['post'])
     def cancelar_turno(self, request, pk=None):
         """Cancelar un turno"""
@@ -1221,42 +1187,49 @@ class TurnoViewSet(viewsets.ModelViewSet):
         Endpoint para obtener el estado de todas las cajas activas y sus turnos actuales
         """
         try:
-            cajas_activas = Caja.objects.filter(estado=True, deleted_at__isnull=True)
+            # Usar el nombre correcto del campo: Estado (con mayúscula)
+            cajas_activas = Caja.objects.filter(Estado=True, deleted_at__isnull=True)
             estado_cajas = []
             
             for caja in cajas_activas:
                 # Obtener turno actual en atención
+                # Remover deleted_at__isnull=True porque Turno no tiene este campo
                 turno_actual = Turno.objects.filter(
                     ID_Caja=caja,
-                    estado='en_atencion',
-                    deleted_at__isnull=True
-                ).select_related('ID_Cliente', 'ID_Servicio').first()
+                    estado='en_atencion'
+                ).select_related('ID_Cliente__ID_Usuario', 'ID_Servicio').first()
                 
-                # Contar turnos en espera
+                # Contar turnos en espera - usar 'esperando' en lugar de 'en_espera'
                 turnos_en_espera = Turno.objects.filter(
                     ID_Caja=caja,
-                    estado='en_espera',
-                    deleted_at__isnull=True
+                    estado='esperando'
                 ).count()
                 
                 caja_info = {
                     'id': caja.id,
                     'nombre': caja.nombre,
-                    'estado': caja.estado,
+                    'estado': caja.Estado,  # Usar el nombre correcto del campo
                     'turno_actual': None,
                     'turnos_en_espera': turnos_en_espera
                 }
                 
                 if turno_actual:
+                    # Los datos del cliente están en ID_Usuario del Cliente
+                    cliente_nombre = "Cliente Manual"
+                    cliente_apellido = ""
+                    if turno_actual.ID_Cliente and turno_actual.ID_Cliente.ID_Usuario:
+                        cliente_nombre = turno_actual.ID_Cliente.ID_Usuario.first_name or "Sin nombre"
+                        cliente_apellido = turno_actual.ID_Cliente.ID_Usuario.last_name or ""
+                    
                     caja_info['turno_actual'] = {
                         'id': turno_actual.id,
                         'numero_turno': turno_actual.numero_turno,
                         'cliente': {
-                            'nombre': turno_actual.ID_Cliente.nombre,
-                            'apellido': turno_actual.ID_Cliente.apellido
+                            'nombre': cliente_nombre,
+                            'apellido': cliente_apellido
                         },
-                        'servicio': turno_actual.ID_Servicio.nombre,
-                        'hora_inicio_atencion': turno_actual.hora_inicio_atencion
+                        'servicio': turno_actual.ID_Servicio.Nombre if turno_actual.ID_Servicio else "Sin servicio",  # Usar Nombre con mayúscula
+                        'created_at': turno_actual.created_at.isoformat() if turno_actual.created_at else None  # Usar created_at en lugar de hora_inicio_atencion
                     }
                 
                 estado_cajas.append(caja_info)
