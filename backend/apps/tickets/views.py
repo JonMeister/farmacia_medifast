@@ -508,40 +508,6 @@ class TurnoViewSet(viewsets.ModelViewSet):
         serializer = TurnoSerializer(turnos, many=True)
         return Response(serializer.data)
     
-    @action(detail=False, methods=['get'])
-    def estado_cajas(self, request):
-        """Obtener estado de todas las cajas con turnos pendientes"""
-        cajas = Caja.objects.filter(deleted_at__isnull=True).order_by('id')
-        resultado = []
-        
-        for caja in cajas:
-            turnos_pendientes = Turno.objects.filter(
-                ID_Caja=caja,
-                estado__in=['esperando', 'en_atencion']
-            ).count()
-            
-            turno_actual = Turno.objects.filter(
-                ID_Caja=caja,
-                estado='en_atencion'
-            ).first()
-            
-            resultado.append({
-                'id': caja.id,
-                'estado': caja.Estado,
-                'cajero': {
-                    'nombre': f"{caja.ID_Usuario.first_name} {caja.ID_Usuario.last_name}" if caja.ID_Usuario else None,
-                    'cc': caja.ID_Usuario.cc if caja.ID_Usuario else None
-                } if caja.ID_Usuario else None,
-                'turnos_pendientes': turnos_pendientes,
-                'turno_actual': {
-                    'numero': turno_actual.numero_turno,
-                    'cliente': turno_actual.Cedula_manual,
-                    'servicio': turno_actual.ID_Servicio.Nombre
-                } if turno_actual else None
-            })
-        
-        return Response(resultado)
-    
     @action(detail=True, methods=['post'])
     def cancelar_turno(self, request, pk=None):
         """Cancelar un turno"""
