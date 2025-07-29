@@ -2,6 +2,10 @@ import Button from "../components/Button";
 import { useNavigate } from "react-router-dom";
 import React, { useEffect, useState } from "react";
 import medifastLogo from "../assets/medifast_logo.png";
+// Importar las imágenes del carrusel
+import imgPR_ViernesPastillaton from "../assets/ads/PR_ViernesPastillaton.jpg";
+import imgVT_Vitamax from "../assets/ads/VT_Vitamax.jpg";
+import imgMD_Somniora from "../assets/ads/MD_Somniora.jpg";
 import {
   getTurnoActivoCliente,
   getColaTurnos,
@@ -11,9 +15,9 @@ import {
 } from "../api/turno.api";
 
 const images = [
-  "src/assets/ads/PR_ViernesPastillaton.jpg",
-  "src/assets/ads/VT_Vitamax.jpg",
-  "src/assets/ads/MD_Somniora.jpg",
+  imgPR_ViernesPastillaton,
+  imgVT_Vitamax,
+  imgMD_Somniora,
 ];
 
 const messages = [
