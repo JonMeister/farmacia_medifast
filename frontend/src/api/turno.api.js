@@ -23,12 +23,22 @@ apiClient.interceptors.request.use(
 
 // API de servicios
 export const getServicios = async () => {
+  console.log("🔍 Iniciando getServicios...");
+  
   try {
     const response = await apiClient.get("/servicios/");
-    console.log("Respuesta de servicios:", response.data);
-    return response.data.results || response.data;
+    console.log("✅ Respuesta completa getServicios:", response);
+    console.log("📄 response.data:", response.data);
+    
+    // Manejar respuesta paginada del backend
+    const data = response.data.results || response.data;
+    console.log("🔄 Datos extraídos:", data);
+    console.log("📊 Tipo de datos:", Array.isArray(data) ? 'Array' : typeof data);
+    console.log("📝 Cantidad de elementos:", Array.isArray(data) ? data.length : 'No es array');
+    
+    return data; // Retornar directamente el array
   } catch (error) {
-    console.error("Error al obtener servicios:", error);
+    console.error("❌ Error en getServicios:", error);
     throw error;
   }
 };
@@ -60,36 +70,66 @@ export const getTurnoActivoCliente = async (cedula) => {
 };
 
 export const getColaTurnos = async () => {
+  console.log("🔍 Iniciando getColaTurnos...");
+  
   try {
     const response = await apiClient.get("/turnos/cola_turnos/");
-    console.log("Respuesta de cola_turnos:", response.data);
-    return response.data.results || response.data;
+    console.log("✅ Respuesta completa getColaTurnos:", response);
+    console.log("📄 response.data:", response.data);
+    
+    // Manejar respuesta paginada del backend
+    const data = response.data.results || response.data;
+    console.log("🔄 Datos extraídos:", data);
+    console.log("📊 Tipo de datos:", Array.isArray(data) ? 'Array' : typeof data);
+    console.log("📝 Cantidad de elementos:", Array.isArray(data) ? data.length : 'No es array');
+    
+    return data; // Retornar directamente el array
   } catch (error) {
-    console.error("Error al obtener cola de turnos:", error);
+    console.error("❌ Error en getColaTurnos:", error);
     throw error;
   }
 };
 
 export const getTurnoActualCaja = async (cajaId) => {
+  console.log("🔍 Iniciando getTurnoActualCaja...");
+  
   try {
     const response = await apiClient.get(
       `/turnos/turno_actual_caja/?caja_id=${cajaId}`
     );
-    console.log("Respuesta de turno_actual_caja:", response.data);
-    return response.data.results || response.data;
+    console.log("✅ Respuesta completa getTurnoActualCaja:", response);
+    console.log("📄 response.data:", response.data);
+    
+    // Manejar respuesta paginada del backend
+    const data = response.data.results || response.data;
+    console.log("🔄 Datos extraídos:", data);
+    console.log("📊 Tipo de datos:", Array.isArray(data) ? 'Array' : typeof data);
+    console.log("📝 Cantidad de elementos:", Array.isArray(data) ? data.length : 'No es array');
+    
+    return data; // Retornar directamente el array o datos
   } catch (error) {
-    console.error("Error al obtener turno actual de caja:", error);
+    console.error("❌ Error en getTurnoActualCaja:", error);
     throw error;
   }
 };
 
 export const getEstadoCajas = async () => {
+  console.log("🔍 Iniciando getEstadoCajas...");
+  
   try {
     const response = await apiClient.get("/turnos/estado_cajas/");
-    console.log("Respuesta de estado_cajas:", response.data);
-    return response.data.results || response.data;
+    console.log("✅ Respuesta completa getEstadoCajas:", response);
+    console.log("📄 response.data:", response.data);
+    
+    // Manejar respuesta paginada del backend
+    const data = response.data.results || response.data;
+    console.log("🔄 Datos extraídos:", data);
+    console.log("📊 Tipo de datos:", Array.isArray(data) ? 'Array' : typeof data);
+    console.log("📝 Cantidad de elementos:", Array.isArray(data) ? data.length : 'No es array');
+    
+    return data; // Retornar directamente el array o datos
   } catch (error) {
-    console.error("Error al obtener estado de cajas:", error);
+    console.error("❌ Error en getEstadoCajas:", error);
     throw error;
   }
 };
