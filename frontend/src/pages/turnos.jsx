@@ -54,6 +54,10 @@ export default function Turno() {
   const [mostrarEstadoCajas, setMostrarEstadoCajas] = useState(false);
   const [notificacionesActivas, setNotificacionesActivas] = useState(false);
   const [turnoAnterior, setTurnoAnterior] = useState(null);
+  
+  // Estados para mejor UX (sin afectar funcionalidad core)
+  const [actualizandoManual, setActualizandoManual] = useState(false);
+  const [ultimaActualizacion, setUltimaActualizacion] = useState(new Date());
 
   // Cambiar imagen cada 15 segundos
   useEffect(() => {
@@ -102,6 +106,9 @@ export default function Turno() {
         // Obtener estado de todas las cajas
         const estadoCajasResponse = await getEstadoCajas();
         setEstadoCajas(estadoCajasResponse.estado_cajas || []);
+        
+        // Actualizar timestamp silenciosamente
+        setUltimaActualizacion(new Date());
       } catch (error) {
         console.error("Error al cargar datos de turnos:", error);
       } finally {
@@ -109,6 +116,43 @@ export default function Turno() {
       }
     },
     [navigate]
+  );
+
+  // Función para actualización manual más rápida (sin mostrar loading completo)
+  const actualizarManual = React.useCallback(
+    async (cedula) => {
+      if (actualizandoManual) return; // Evitar múltiples llamadas
+      
+      try {
+        setActualizandoManual(true);
+        
+        // Solo actualizar datos críticos más rápido
+        const [turnoClienteResponse, turnoActualGlobalResponse, colaResponse] = await Promise.all([
+          getTurnoActivoCliente(cedula),
+          getTurnoActualGlobal(),
+          getColaTurnos()
+        ]);
+
+        if (turnoClienteResponse.tiene_turno) {
+          setTurnoCliente(turnoClienteResponse.turno);
+        } else {
+          navigate("/pedir-turno");
+          return;
+        }
+
+        if (turnoActualGlobalResponse.hay_turno_actual) {
+          setTurnoActualCaja(turnoActualGlobalResponse.turno_actual);
+        }
+
+        setColaTurnos(colaResponse);
+        setUltimaActualizacion(new Date());
+      } catch (error) {
+        console.error("Error en actualización manual:", error);
+      } finally {
+        setActualizandoManual(false);
+      }
+    },
+    [navigate, actualizandoManual]
   );
 
   // Verificar autenticación y cargar datos
@@ -276,10 +320,25 @@ export default function Turno() {
         {/* Información del Cliente */}
         {clienteInfo && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-            <h3 className="font-semibold text-blue-800">
-              👤 Bienvenido, {clienteInfo.nombre} {clienteInfo.apellido}
-            </h3>
-            <p className="text-sm text-blue-600">CC: {clienteInfo.cedula}</p>
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="font-semibold text-blue-800">
+                  👤 Bienvenido, {clienteInfo.nombre} {clienteInfo.apellido}
+                </h3>
+                <p className="text-sm text-blue-600">CC: {clienteInfo.cedula}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-blue-500">
+                  Última actualización: {ultimaActualizacion.toLocaleTimeString()}
+                </p>
+                {actualizandoManual && (
+                  <div className="flex items-center space-x-1 mt-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-xs text-green-600">Actualizando...</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -322,10 +381,18 @@ export default function Turno() {
           </div>
           <div className="flex flex-col md:flex-row gap-4 md:w-auto w-full">
             <button
-              className="flex-1 border border-green-600 text-green-600 rounded-full py-4 px-6 font-bold hover:bg-green-200 transition duration-300"
-              onClick={() => cargarDatosTurnos(clienteInfo?.cedula)}
+              className="flex-1 border border-green-600 text-green-600 rounded-full py-4 px-6 font-bold hover:bg-green-200 transition duration-300 flex items-center justify-center space-x-2"
+              onClick={() => actualizarManual(clienteInfo?.cedula)}
+              disabled={actualizandoManual}
             >
-              Actualizar información
+              {actualizandoManual ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Actualizando...</span>
+                </>
+              ) : (
+                <span>Actualizar información</span>
+              )}
             </button>
             <button
               className="flex-1 border border-orange-600 bg-orange-600 text-white rounded-full py-4 px-6 font-bold hover:bg-orange-800 transition duration-300"
