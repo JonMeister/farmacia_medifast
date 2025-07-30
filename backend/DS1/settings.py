@@ -25,10 +25,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-_^i)hw-@-0+nv_01^5+86nm%gx$h=w5bk5^3a_@q_d&+es8zff')
+SECRET_KEY = os.getenv('SECRET_KEY')
+
+# Verificar que SECRET_KEY esté definida
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable is required")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
 ALLOWED_HOSTS = [
     'localhost',
@@ -99,8 +103,6 @@ WSGI_APPLICATION = 'DS1.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-# No volver a poner las credenciales de la base de datos como strings, usar siempre variables de entorno.
-# Pesima practica, da paso a que cualquiera pueda tener acceso a la información.
 
 # Configuración para PostgreSQL (Render)
 DATABASES = {
@@ -112,7 +114,7 @@ DATABASES = {
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'PORT': os.getenv('DB_PORT', '5432'),
         'OPTIONS': {
-            'sslmode': 'prefer',  # Cambiar de 'require' a 'prefer'
+            'sslmode': 'prefer', 
         },
     }
 }
@@ -180,15 +182,11 @@ MEDIA_URL = '/media/'
 
 MEDIA_ROOT = BASE_DIR / 'media'
 
-#Rutas de autorizacion de peticiones
+# Rutas de autorización de peticiones
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'https://localhost:5173',
-    'https://localhost:5174',
+    'http://localhost:5173',   # Desarrollo local Vite
+    'http://localhost:5174',   # Desarrollo local Vite (puerto alternativo)
     'https://farmacia-medifast.onrender.com',  # Backend URL para testing
-    # URLs de Vercel - agregar la URL específica de tu proyecto
-    'https://*.vercel.app',  # Patron para todos los subdominios de Vercel
 ]
 
 # Para manejar patrones con wildcards en Vercel
@@ -196,12 +194,8 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://.*\.vercel\.app$",  # Cualquier subdominio de vercel.app
 ]
 
-# Para desarrollo, permitir orígenes adicionales si es necesario
-if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = False
-else:
-    # En producción, ser más restrictivo
-    CORS_ALLOW_ALL_ORIGINS = False
+# CORS restrictivo - usar solo orígenes específicos definidos arriba
+CORS_ALLOW_ALL_ORIGINS = False
 
 # Permitir todas las cabeceras para desarrollo
 CORS_ALLOWED_HEADERS = [
