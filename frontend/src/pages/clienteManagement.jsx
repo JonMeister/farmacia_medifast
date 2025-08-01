@@ -22,8 +22,8 @@ export default function ClienteManagement() {
     employee: [],
   });
 
-  // Estado para manejar el usuario seleccionado
-  const [currentEndpoint, setCurrentEndpoint] = useState("users");
+  // Estado para manejar el filtro de rol seleccionado
+  const [currentRole, setCurrentRole] = useState("todos");
   const [selectedUser, setSelectedUser] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -122,19 +122,39 @@ export default function ClienteManagement() {
     return { isValid: true, message: "" };
   };
 
-  // Obtener usuarios del endpoint actual con filtro de búsqueda
+  // Obtener usuarios filtrados por rol con filtro de búsqueda
   const getCurrentUsers = () => {
-    console.log("getCurrentUsers - currentEndpoint:", currentEndpoint);
+    console.log("getCurrentUsers - currentRole:", currentRole);
     console.log("getCurrentUsers - users object:", users);
-    const allUsers = users[currentEndpoint] || [];
-    console.log("getCurrentUsers - allUsers:", allUsers);
+    
+    // Combinar todos los usuarios de todos los endpoints
+    const allUsers = [
+      ...users.users,
+      ...users.clients,
+      ...users.u_admin,
+      ...users.employee,
+    ].filter((user, index, self) => 
+      // Eliminar duplicados basándose en el ID del usuario
+      index === self.findIndex(u => u.id === user.id)
+    );
 
+    console.log("getCurrentUsers - allUsers combinados:", allUsers);
+
+    // Filtrar por rol seleccionado
+    let filteredUsers = allUsers;
+    if (currentRole !== "todos") {
+      filteredUsers = allUsers.filter(user => user.rol === currentRole);
+    }
+
+    console.log("getCurrentUsers - usuarios filtrados por rol:", filteredUsers);
+
+    // Aplicar filtro de búsqueda si existe
     if (!searchTerm) {
-      return allUsers;
+      return filteredUsers;
     }
 
     // Filtrar usuarios por CC, nombre, apellido o email
-    return allUsers.filter((user) => {
+    return filteredUsers.filter((user) => {
       const searchLower = searchTerm.toLowerCase();
       const cc = (user.cc || "").toString().toLowerCase();
       const nombre = (user.nombre || "").toLowerCase();
@@ -150,13 +170,8 @@ export default function ClienteManagement() {
     });
   };
 
-  // Mostrar formulario para crear (solo en USERS)
+  // Mostrar formulario para crear (solo en "todos" o cuando hay usuarios)
   const handleShowCreateForm = () => {
-    if (currentEndpoint !== "users") {
-      alert("Solo se pueden crear usuarios desde la sección USERS");
-      return;
-    }
-
     setFormData({
       cc: "",
       nombre: "",
@@ -164,7 +179,7 @@ export default function ClienteManagement() {
       telefono: "",
       email: "",
       password: "",
-      rol: "", // Permitir crear sin rol
+      rol: currentRole === "todos" ? "cliente" : currentRole, // Asignar rol por defecto basado en el filtro actual
       is_active: true,
       prioritario: false,
       Fecha_contratacion: "",
@@ -191,11 +206,11 @@ export default function ClienteManagement() {
         user.Fecha_contratacion || user.fecha_contratacion || "",
     };
 
-    // Si estamos en un endpoint específico y el rol está vacío, inferirlo
+    // Si estamos en un filtro específico y el rol está vacío, inferirlo
     if (!userData.rol) {
-      if (currentEndpoint === "clients") userData.rol = "cliente";
-      else if (currentEndpoint === "u_admin") userData.rol = "administrador";
-      else if (currentEndpoint === "employee") userData.rol = "empleado";
+      if (currentRole === "cliente") userData.rol = "cliente";
+      else if (currentRole === "administrador") userData.rol = "administrador";
+      else if (currentRole === "empleado") userData.rol = "empleado";
     }
 
     // Ahora user.id debe ser siempre el ID del usuario base debido al mapeo corregido
@@ -210,7 +225,7 @@ export default function ClienteManagement() {
     console.log("Usuario original:", user);
     console.log("Datos mapeados para formulario:", userData);
     console.log("ID a editar (user.id):", userIdToEdit);
-    console.log("Endpoint actual:", currentEndpoint);
+    console.log("Filtro actual:", currentRole);
     console.log("Estado editingId después del set:", userIdToEdit);
     console.log("===========================");
   };
@@ -248,18 +263,20 @@ export default function ClienteManagement() {
 
     try {
       if (editingId) {
-        // EDITAR: Para todos los endpoints usar función completa de actualización
+        // EDITAR: Para todos los usuarios usar función completa de actualización
         console.log("Actualizando usuario:", editingId);
         console.log("Datos a enviar:", formData);
-        console.log("Endpoint actual:", currentEndpoint);
+        console.log("Filtro actual:", currentRole);
 
-        await UpdateUserWithRoleChange(editingId, formData, currentEndpoint);
+        // Determinar el endpoint correcto basado en el rol del usuario
+        let targetEndpoint = "users"; // Por defecto
+        if (formData.rol === "cliente") targetEndpoint = "clients";
+        else if (formData.rol === "administrador") targetEndpoint = "u_admin";
+        else if (formData.rol === "empleado") targetEndpoint = "employee";
+
+        await UpdateUserWithRoleChange(editingId, formData, targetEndpoint);
       } else {
-        // CREAR: Solo desde USERS
-        if (currentEndpoint !== "users") {
-          alert("Solo se pueden crear usuarios desde la sección USERS");
-          return;
-        }
+        // CREAR: Permitir crear desde cualquier vista
         console.log("Creando nuevo usuario:", formData);
         await CreateUserByRole(formData);
       }
@@ -306,7 +323,21 @@ export default function ClienteManagement() {
     }
 
     try {
-      await DeleteUserFromEndpoint(id, currentEndpoint);
+      // Buscar el usuario para determinar su rol y endpoint correcto
+      const allUsers = [
+        ...users.users,
+        ...users.clients,
+        ...users.u_admin,
+        ...users.employee,
+      ];
+      const userToDelete = allUsers.find(user => user.id === id);
+      
+      let targetEndpoint = "users"; // Por defecto
+      if (userToDelete?.rol === "cliente") targetEndpoint = "clients";
+      else if (userToDelete?.rol === "administrador") targetEndpoint = "u_admin";
+      else if (userToDelete?.rol === "empleado") targetEndpoint = "employee";
+
+      await DeleteUserFromEndpoint(id, targetEndpoint);
       await loadAllUsers();
     } catch (err) {
       console.error("Error al eliminar usuario:", err);
@@ -322,23 +353,49 @@ export default function ClienteManagement() {
     setSelectedUser(user);
   };
 
-  // Cambiar endpoint actual
-  const handleEndpointChange = (endpoint) => {
-    setCurrentEndpoint(endpoint);
+  // Cambiar filtro de rol actual
+  const handleRoleChange = (role) => {
+    setCurrentRole(role);
     setSelectedUser(null);
     setShowForm(false);
-    setSearchTerm(""); // Limpiar búsqueda al cambiar endpoint
+    setSearchTerm(""); // Limpiar búsqueda al cambiar filtro
   };
 
-  // Obtener título del endpoint
-  const getEndpointTitle = (endpoint) => {
+  // Obtener título del filtro de rol
+  const getRoleTitle = (role) => {
     const titles = {
-      users: "Usuarios Base",
-      clients: "Clientes",
-      u_admin: "Administradores",
-      employee: "Empleados",
+      todos: "Todos los Usuarios",
+      cliente: "Clientes", 
+      administrador: "Administradores",
+      empleado: "Empleados",
     };
-    return titles[endpoint] || endpoint;
+    return titles[role] || role;
+  };
+
+  // Obtener conteo de usuarios por rol
+  const getUserCountByRole = (role) => {
+    if (role === "todos") {
+      const allUsers = [
+        ...users.users,
+        ...users.clients,
+        ...users.u_admin,
+        ...users.employee,
+      ].filter((user, index, self) => 
+        index === self.findIndex(u => u.id === user.id)
+      );
+      return allUsers.length;
+    }
+    
+    const allUsers = [
+      ...users.users,
+      ...users.clients,
+      ...users.u_admin,
+      ...users.employee,
+    ].filter((user, index, self) => 
+      index === self.findIndex(u => u.id === user.id)
+    );
+    
+    return allUsers.filter(user => user.rol === role).length;
   };
 
   if (loading) {
@@ -364,23 +421,23 @@ export default function ClienteManagement() {
       {/* Menu Bar */}
       <div className="bg-white shadow-sm border-b px-4 sm:px-6 py-3">
         <div className="flex flex-wrap gap-1 sm:gap-2">
-          {Object.keys(users).map((endpoint) => (
+          {["todos", "cliente", "administrador", "empleado"].map((role) => (
             <button
-              key={endpoint}
-              onClick={() => handleEndpointChange(endpoint)}
+              key={role}
+              onClick={() => handleRoleChange(role)}
               className={`px-2 sm:px-4 py-2 rounded-lg font-medium transition-all duration-200 text-xs sm:text-sm ${
-                currentEndpoint === endpoint
+                currentRole === role
                   ? "bg-blue-600 text-white shadow-md"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
               <span className="hidden sm:inline">
-                {getEndpointTitle(endpoint)}
+                {getRoleTitle(role)}
               </span>
               <span className="sm:hidden">
-                {getEndpointTitle(endpoint).split(" ")[0]}
+                {getRoleTitle(role).split(" ")[0]}
               </span>
-              <span className="ml-1">({users[endpoint]?.length || 0})</span>
+              <span className="ml-1">({getUserCountByRole(role)})</span>
             </button>
           ))}
         </div>
@@ -416,7 +473,7 @@ export default function ClienteManagement() {
         >
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center px-4 sm:px-6 py-4 bg-gray-50 border-b gap-3 sm:gap-0 flex-shrink-0">
             <h2 className="text-lg font-semibold text-gray-800">
-              {getEndpointTitle(currentEndpoint)}
+              {getRoleTitle(currentRole)}
             </h2>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-2 w-full sm:w-auto">
@@ -610,13 +667,13 @@ export default function ClienteManagement() {
                       Rol
                     </th>
                     {/* Columna adicional para clientes */}
-                    {currentEndpoint === "clients" && (
+                    {currentRole === "cliente" && (
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                         Prioritario
                       </th>
                     )}
                     {/* Columna adicional para empleados */}
-                    {currentEndpoint === "employee" && (
+                    {currentRole === "empleado" && (
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                         F. Contratación
                       </th>
@@ -663,7 +720,7 @@ export default function ClienteManagement() {
                         </span>
                       </td>
                       {/* Celda adicional para clientes - Prioritario */}
-                      {currentEndpoint === "clients" && (
+                      {currentRole === "cliente" && (
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           <span
                             className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${
@@ -677,7 +734,7 @@ export default function ClienteManagement() {
                         </td>
                       )}
                       {/* Celda adicional para empleados - Fecha de Contratación */}
-                      {currentEndpoint === "employee" && (
+                      {currentRole === "empleado" && (
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {user.Fecha_contratacion ||
                             user.fecha_contratacion ||
@@ -749,8 +806,8 @@ export default function ClienteManagement() {
                 </h3>
                 {/* Debug info */}
                 <p className="text-xs text-gray-500 mt-1">
-                  Modo: {editingId ? "EDITAR" : "CREAR"} | Endpoint:{" "}
-                  {currentEndpoint} | User ID: {editingId || "N/A"}
+                  Modo: {editingId ? "EDITAR" : "CREAR"} | Filtro:{" "}
+                  {currentRole} | User ID: {editingId || "N/A"}
                 </p>
               </div>
 
