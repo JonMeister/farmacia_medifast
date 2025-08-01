@@ -524,28 +524,12 @@ export default function ClienteManagement() {
               </div>
 
               {/* Botón de acción */}
-              {currentEndpoint === "users" ? (
-                <button
-                  onClick={handleShowCreateForm}
-                  className="px-3 sm:px-4 py-2 rounded-lg font-medium text-sm w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white"
-                >
-                  Crear Usuario
-                </button>
-              ) : (
-                <button
-                  onClick={() =>
-                    selectedUser && handleShowEditForm(selectedUser)
-                  }
-                  className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-sm w-full sm:w-auto ${
-                    selectedUser
-                      ? "bg-blue-600 hover:bg-blue-700 text-white"
-                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  }`}
-                  disabled={!selectedUser}
-                >
-                  {selectedUser ? "Editar Usuario" : "Seleccionar Usuario"}
-                </button>
-              )}
+              <button
+                onClick={handleShowCreateForm}
+                className="px-3 sm:px-4 py-2 rounded-lg font-medium text-sm w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white"
+              >
+                Crear Usuario
+              </button>
             </div>
           </div>
 
@@ -584,14 +568,14 @@ export default function ClienteManagement() {
                       <p className="text-sm text-gray-600">{user.email}</p>
                       <p className="text-sm text-gray-600">CC: {user.cc}</p>
                       {/* Información adicional específica para clientes */}
-                      {currentEndpoint === "clients" &&
+                      {currentRole === "cliente" &&
                         user.prioritario !== undefined && (
                           <p className="text-sm text-gray-600">
                             Prioritario: {user.prioritario ? "Sí" : "No"}
                           </p>
                         )}
                       {/* Información adicional específica para empleados */}
-                      {currentEndpoint === "employee" &&
+                      {currentRole === "empleado" &&
                         user.Fecha_contratacion && (
                           <p className="text-sm text-gray-600">
                             F. Contratación: {user.Fecha_contratacion}
@@ -928,7 +912,7 @@ export default function ClienteManagement() {
 
                   {/* Campo de fecha de contratación solo para empleados */}
                   {(formData.rol === "empleado" ||
-                    currentEndpoint === "employee") && (
+                    currentRole === "empleado") && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Fecha de Contratación
@@ -941,7 +925,7 @@ export default function ClienteManagement() {
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         required={
                           formData.rol === "empleado" ||
-                          currentEndpoint === "employee"
+                          currentRole === "empleado"
                         }
                       />
                     </div>
@@ -962,7 +946,7 @@ export default function ClienteManagement() {
 
                   {/* Campo de prioridad solo para clientes */}
                   {(formData.rol === "cliente" ||
-                    currentEndpoint === "clients") && (
+                    currentRole === "cliente") && (
                     <div className="flex items-center">
                       <input
                         type="checkbox"
