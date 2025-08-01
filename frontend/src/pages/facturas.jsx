@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getFacturas } from "../api/facturas.api";
+import { getFacturas, getAllFacturas } from "../api/facturas.api";
 
 export default function Facturas() {
   const rol = localStorage.getItem("rol");
@@ -12,11 +12,18 @@ export default function Facturas() {
   const [facturasFiltradas, setFacturasFiltradas] = useState([]);
   const [modalDetalles, setModalDetalles] = useState(false);
   const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
+  
+  // Estados para paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalFacturas, setTotalFacturas] = useState(0);
+  const [pageSize] = useState(20); // Facturas por página
+  const [loadingPage, setLoadingPage] = useState(false);
 
   // Cargar facturas al montar el componente
   useEffect(() => {
     if (rol === "administrador" && token) {
-      cargarFacturas();
+      cargarFacturas(currentPage);
     } else if (rol !== "administrador") {
       setError(
         "No tienes permiso para acceder a esta sección. Solo administradores."
@@ -26,7 +33,7 @@ export default function Facturas() {
       setError("No estás autenticado. Por favor, inicia sesión.");
       setLoading(false);
     }
-  }, [rol, token]);
+  }, [rol, token, currentPage]);
 
   // Filtrar facturas por fecha
   useEffect(() => {
@@ -124,64 +131,38 @@ export default function Facturas() {
     }
   }, [filtroFecha, facturas]);
 
-  const cargarFacturas = async () => {
+  const cargarFacturas = async (page = 1) => {
     try {
-      setLoading(true);
+      setLoadingPage(page !== 1); // Mostrar loading solo si no es la primera carga
+      if (page === 1) setLoading(true);
       setError(""); // Limpiar errores previos
 
-      console.log("🔄 Cargando facturas...");
-      const response = await getFacturas();
+      console.log(`🔄 Cargando facturas página ${page}...`);
+      const response = await getFacturas(page, pageSize);
       console.log("📦 Facturas cargadas desde API:", response);
-      console.log("📊 Cantidad de facturas:", response.length);
+      
+      setFacturas(response.results || []);
+      setTotalFacturas(response.count || 0);
+      setTotalPages(response.totalPages || 1);
+      setCurrentPage(response.currentPage || page);
+      
+      console.log("📊 Información de paginación:", {
+        página: response.currentPage || page,
+        totalPáginas: response.totalPages || 1,
+        totalFacturas: response.count || 0,
+        facturasPágina: response.results?.length || 0
+      });
 
       // Log detallado de fechas al cargar
-      if (response.length > 0) {
-        console.log("📅 Fechas de todas las facturas:");
-        response.forEach((factura, index) => {
+      if (response.results && response.results.length > 0) {
+        console.log("📅 Fechas de facturas en esta página:");
+        response.results.forEach((factura, index) => {
           console.log(
             `  ${index + 1}. Factura #${factura.id}: "${factura.fecha_factura}"`
           );
         });
-
-        // Agrupar por fecha para análisis
-        const facturasPorFecha = {};
-        response.forEach((factura) => {
-          let fechaKey = "fecha_invalida";
-
-          if (factura.fecha_factura) {
-            if (factura.fecha_factura.includes("T")) {
-              // Convertir fecha ISO a fecha local para agrupación correcta
-              const fechaObj = new Date(factura.fecha_factura);
-              const año = fechaObj.getFullYear();
-              const mes = String(fechaObj.getMonth() + 1).padStart(2, "0");
-              const dia = String(fechaObj.getDate()).padStart(2, "0");
-              fechaKey = `${año}-${mes}-${dia}`;
-            } else if (factura.fecha_factura.includes("/")) {
-              const fechaStr = factura.fecha_factura.split(" ")[0];
-              const [dia, mes, año] = fechaStr.split("/");
-              fechaKey = `${año}-${mes.padStart(2, "0")}-${dia.padStart(
-                2,
-                "0"
-              )}`;
-            }
-          }
-
-          if (!facturasPorFecha[fechaKey]) {
-            facturasPorFecha[fechaKey] = [];
-          }
-          facturasPorFecha[fechaKey].push(factura);
-        });
-
-        console.log("📈 Resumen por fecha:");
-        Object.keys(facturasPorFecha)
-          .sort()
-          .forEach((fecha) => {
-            const facturasFecha = facturasPorFecha[fecha];
-            console.log(`  📅 ${fecha}: ${facturasFecha.length} facturas`);
-          });
       }
 
-      setFacturas(response);
       setError("");
     } catch (err) {
       console.error("❌ Error al cargar facturas:", err);
@@ -198,14 +179,30 @@ export default function Facturas() {
           "Error de conexión. Verifica que el servidor esté funcionando."
         );
       } else {
-        setError(
-          `Error al cargar las facturas: ${
-            err.response?.data?.detail || err.message
-          }`
-        );
+        setError(`Error inesperado: ${err.message}`);
       }
     } finally {
       setLoading(false);
+      setLoadingPage(false);
+    }
+  };
+
+  // Funciones de paginación
+  const irAPagina = (page) => {
+    if (page >= 1 && page <= totalPages && page !== currentPage) {
+      setCurrentPage(page);
+    }
+  };
+
+  const paginaAnterior = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const paginaSiguiente = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
     }
   };
 
@@ -452,13 +449,23 @@ export default function Facturas() {
               <button
                 onClick={() => {
                   console.log("Botón actualizar presionado");
-                  cargarFacturas();
+                  cargarFacturas(currentPage);
                 }}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-                disabled={loading}
+                disabled={loading || loadingPage}
               >
-                {loading ? "Cargando..." : "Actualizar"}
+                {loading || loadingPage ? "Cargando..." : "Actualizar"}
               </button>
+            </div>
+            
+            {/* Información de paginación */}
+            <div className="flex items-center justify-between text-sm text-gray-600 mb-4">
+              <div>
+                Mostrando {facturas.length > 0 ? ((currentPage - 1) * pageSize + 1) : 0} - {Math.min(currentPage * pageSize, totalFacturas)} de {totalFacturas} facturas
+              </div>
+              <div>
+                Página {currentPage} de {totalPages}
+              </div>
             </div>
           </div>
 
@@ -469,18 +476,18 @@ export default function Facturas() {
                 Total Facturas
               </h3>
               <p className="text-3xl font-bold text-green-600">
-                {facturasFiltradas.length}
+                {filtroFecha ? facturasFiltradas.length : totalFacturas}
               </p>
               <p className="text-sm text-gray-500 mt-1">
                 {filtroFecha
-                  ? `Filtradas del ${filtroFecha}`
-                  : `De ${facturas.length} total`}
+                  ? `Filtradas del ${filtroFecha} (de ${totalFacturas} total)`
+                  : "En toda la base de datos"}
               </p>
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow-md">
               <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                Ventas {filtroFecha ? "del Día" : "Totales"}
+                Ventas {filtroFecha ? "del Día" : "de esta Página"}
               </h3>
               <p className="text-3xl font-bold text-blue-600">
                 {formatearPrecio(
@@ -606,6 +613,114 @@ export default function Facturas() {
               </div>
             )}
           </div>
+
+          {/* Controles de Paginación */}
+          {!filtroFecha && totalPages > 1 && (
+            <div className="bg-white px-6 py-4 border-t border-gray-200 rounded-b-lg">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-700">
+                  Mostrando {facturas.length > 0 ? ((currentPage - 1) * pageSize + 1) : 0} - {Math.min(currentPage * pageSize, totalFacturas)} de {totalFacturas} facturas
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  {/* Botón Primera página */}
+                  <button
+                    onClick={() => irAPagina(1)}
+                    disabled={currentPage === 1 || loadingPage}
+                    className={`px-3 py-2 text-sm rounded-md ${
+                      currentPage === 1 || loadingPage
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    ««
+                  </button>
+                  
+                  {/* Botón Anterior */}
+                  <button
+                    onClick={paginaAnterior}
+                    disabled={currentPage === 1 || loadingPage}
+                    className={`px-3 py-2 text-sm rounded-md ${
+                      currentPage === 1 || loadingPage
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    ‹ Anterior
+                  </button>
+
+                  {/* Números de página */}
+                  <div className="flex space-x-1">
+                    {(() => {
+                      const pages = [];
+                      const maxVisible = 5;
+                      let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+                      let end = Math.min(totalPages, start + maxVisible - 1);
+                      
+                      if (end - start + 1 < maxVisible) {
+                        start = Math.max(1, end - maxVisible + 1);
+                      }
+
+                      for (let i = start; i <= end; i++) {
+                        pages.push(
+                          <button
+                            key={i}
+                            onClick={() => irAPagina(i)}
+                            disabled={loadingPage}
+                            className={`px-3 py-2 text-sm rounded-md ${
+                              i === currentPage
+                                ? 'bg-blue-600 text-white'
+                                : loadingPage
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            {i}
+                          </button>
+                        );
+                      }
+                      return pages;
+                    })()}
+                  </div>
+
+                  {/* Botón Siguiente */}
+                  <button
+                    onClick={paginaSiguiente}
+                    disabled={currentPage === totalPages || loadingPage}
+                    className={`px-3 py-2 text-sm rounded-md ${
+                      currentPage === totalPages || loadingPage
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    Siguiente ›
+                  </button>
+                  
+                  {/* Botón Última página */}
+                  <button
+                    onClick={() => irAPagina(totalPages)}
+                    disabled={currentPage === totalPages || loadingPage}
+                    className={`px-3 py-2 text-sm rounded-md ${
+                      currentPage === totalPages || loadingPage
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    »»
+                  </button>
+                </div>
+              </div>
+              
+              {loadingPage && (
+                <div className="mt-4 flex items-center justify-center">
+                  <div className="flex items-center space-x-2 text-blue-600">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span className="text-sm">Cargando página {currentPage}...</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Modal de Detalles */}
           {modalDetalles && facturaSeleccionada && (
